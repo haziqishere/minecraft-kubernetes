@@ -1,0 +1,56 @@
+# Traefik Configuration
+service:
+  type: NodePort
+
+ports:
+  traefik:
+    port: 8080
+    expose:
+      default: true
+    exposedPort: 8080
+    nodePort: 30888
+    protocol: TCP
+  web:
+    port: 8000
+    nodePort: 30080
+    exposedPort: 80
+    expose:
+      default: true
+  websecure:
+    port: 8443
+    nodePort: 30443
+    exposedPort: 443
+    expose:
+      default: true
+  minecraft:
+    port: 25565
+    nodePort: 30565
+    exposedPort: 25565
+    protocol: TCP
+    expose:
+      default: true
+
+
+# Enable dashboard
+api:
+  dashboard: true
+additionalArguments:
+  - "--api.insecure=true"
+
+ingressRoute:
+  dashboard:
+    enabled: true
+    entryPoints:
+      - traefik
+
+# Logs
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: true
+
+# Enable Prometheus metrics
+metrics:
+  prometheus:
+    enabled: true

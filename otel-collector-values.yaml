@@ -1,0 +1,84 @@
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+# Mode
+mode: deployment
+replicaCount: 1
+
+# Presets - DISABLE all presets (they override our config)
+presets:
+  kubernetesAttributes:
+    enabled: false
+  kubeletMetrics:
+    enabled: false
+  kubernetesEvents:
+    enabled: false
+  clusterMetrics:
+    enabled: false
+  logsCollection:
+    enabled: false
+  hostMetrics:
+    enabled: false
+
+# Our custom config
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+    
+    prometheus:
+      config:
+        scrape_configs:
+          - job_name: 'kube-state-metrics'
+            static_configs:
+              - targets: ['kube-prometheus-stack-kube-state-metrics.observability.svc:8080']
+          
+          - job_name: 'traefik'
+            static_configs:
+              - targets: ['traefik.traefik.svc:9100']
+
+  processors:
+    batch: {}
+    memory_limiter:
+      check_interval: 1s
+      limit_mib: 256
+
+  exporters:
+    otlp:
+      endpoint: api.honeycomb.io:443
+      headers:
+        x-honeycomb-team: JogbgzjyIogvA2z8OWvHQD
+        x-honeycomb-dataset: Prod
+    
+    debug:
+      verbosity: detailed
+
+  service:
+    pipelines:
+      metrics:
+        receivers: [otlp, prometheus]
+        processors: [memory_limiter, batch]
+        exporters: [debug, otlp]
+      
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug, otlp]
+      
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, batch]
+        exporters: [debug, otlp]
+
+# Resources
+resources:
+  limits:
+    memory: 512Mi
+    cpu: 500m
+  requests:
+    memory: 256Mi
+    cpu: 100m
