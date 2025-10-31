@@ -1,4 +1,5 @@
 *.log
 .DS_Store
 *-secret.yaml
-kubeconfig
+
+.CLAUDE.md

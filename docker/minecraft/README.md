@@ -5,7 +5,7 @@ Custom Minecraft server based on `itzg/minecraft-server` with additional mods an
 ## Features
 - Difficulty: Hard
 - Villages enabled
-- Custom view distance
+- Custom view distance: 10
 - Health checks enabled
 
 ## Adding Mods
@@ -14,10 +14,22 @@ Custom Minecraft server based on `itzg/minecraft-server` with additional mods an
 3. Commit and push
 4. GitHub Actions will rebuild automatically
 
+## Adding Plugins
+1. Download plugin JAR files
+2. Place in `plugins/` directory
+3. Commit and push
+
 ## Building Locally
 ```bash
+cd docker/minecraft
 docker build -t minecraft-custom:local .
 docker run -p 25565:25565 minecraft-custom:local
+```
+
+Or use the Makefile from root:
+```bash
+make build-minecraft
+make run-minecraft
 ```
 
 ## Environment Variables
