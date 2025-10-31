@@ -23,7 +23,7 @@ spec:
     spec:
       containers:
       - name: minecraft
-        image: haziqishere/minecraft-custom:latest
+        image: haziqishere/minecraft-custom:main-fc0a0d5
         env:
         - name: EULA
           value: "TRUE"
