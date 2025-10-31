@@ -1,0 +1,62 @@
+name: Build Minecraft Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docker/minecraft/**'
+      - '.github/workflows/build-minecraft.yaml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: minecraft-custom
+  REGISTRY: docker.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=main-
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/minecraft
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+
+      - name: Update Kubernetes manifest
+        run: |
+          NEW_TAG="main-${GITHUB_SHA::7}"
+          sed -i "s|image: .*minecraft-custom.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${NEW_TAG}|" kubernetes/minecraft/deployment.yaml
+          
+      - name: Commit changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add kubernetes/minecraft/deployment.yaml
+          git diff --staged --quiet || git commit -m "chore: update minecraft image to ${GITHUB_SHA::7} [skip ci]"
+          git push
