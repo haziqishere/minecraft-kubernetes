@@ -1,0 +1,84 @@
+name: Build and Push Minecraft Image
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'docker/minecraft/**'
+      - '.github/workflows/build-minecraft.yaml'
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: minecraft-custom
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=sha,prefix=main-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./docker/minecraft
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
+          cache-to: type=registry,ref=${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+          provenance: false
+
+      - name: Update deployment manifest
+        run: |
+          NEW_TAG="main-${GITHUB_SHA::7}"
+          sed -i "s|image: .*minecraft-custom.*|image: ${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${NEW_TAG}|" kubernetes/minecraft/deployment.yaml
+          
+          echo "Updated image tag to: ${NEW_TAG}"
+          grep "image:" kubernetes/minecraft/deployment.yaml
+
+      - name: Commit and push changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add kubernetes/minecraft/deployment.yaml
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "chore: update minecraft image to ${GITHUB_SHA::7} [skip ci]"
+            git push
+          fi
+
+      - name: Job summary
+        run: |
+          echo "## 🎮 Minecraft Image Built Successfully!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:main-${GITHUB_SHA::7}\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Docker Hub:** https://hub.docker.com/r/${{ secrets.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "ArgoCD will automatically deploy this image! 🚀" >> $GITHUB_STEP_SUMMARY
