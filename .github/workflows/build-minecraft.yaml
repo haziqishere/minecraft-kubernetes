@@ -15,7 +15,9 @@ env:
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
-    
+    permissions:
+      contents: write  # Allow pushing commits back to repo
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
