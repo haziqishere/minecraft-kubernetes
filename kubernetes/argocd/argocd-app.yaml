@@ -8,7 +8,7 @@ spec:
   source:
     repoURL: https://github.com/haziqishere/minecraft-kubernetes
     targetRevision: HEAD
-    path: minecraft
+    path: kubernetes/minecraft
   destination:
     server: https://kubernetes.default.svc
     namespace: minecraft
