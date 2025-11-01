@@ -1,2 +1,0 @@
-touch docker/minecraft/mods/.gitkeep
-touch docker/minecraft/plugins/.gitkeep
