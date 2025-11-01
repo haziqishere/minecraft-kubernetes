@@ -1,10 +1,10 @@
 FROM itzg/minecraft-server:latest
 
-# Copy mods and plugins directories (will be empty initially)
-# To add mods: place .jar files in docker/minecraft/mods/
-# To add plugins: place .jar files in docker/minecraft/plugins/
-COPY --chown=1000:1000 mods/ /data/mods/
-COPY --chown=1000:1000 plugins/ /data/plugins/
+# Copy mods (if any)
+COPY mods/*.jar /data/mods/ 2>/dev/null || true
+
+# Copy plugins (if any)
+COPY plugins/*.jar /data/plugins/ 2>/dev/null || true
 
 # Custom environment variables
 ENV DIFFICULTY=hard \
@@ -12,7 +12,7 @@ ENV DIFFICULTY=hard \
     GENERATE_STRUCTURES=true \
     MAX_BUILD_HEIGHT=320 \
     VIEW_DISTANCE=10 \
-    ONLINE_MODE= false
+    ONLINE_MODE=false
 
 # Metadata
 LABEL maintainer="haziqishere" \
