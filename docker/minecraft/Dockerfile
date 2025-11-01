@@ -11,7 +11,8 @@ ENV DIFFICULTY=hard \
     SPAWN_PROTECTION=0 \
     GENERATE_STRUCTURES=true \
     MAX_BUILD_HEIGHT=320 \
-    VIEW_DISTANCE=10
+    VIEW_DISTANCE=10 \
+    ONLINE_MODE= false
 
 # Metadata
 LABEL maintainer="haziqishere" \
