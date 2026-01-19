@@ -6,18 +6,24 @@ FROM itzg/minecraft-server:latest
 COPY --chown=1000:1000 mods/ /data/mods/
 COPY --chown=1000:1000 plugins/ /data/plugins/
 
+ENV server-name="KroniSMP" \
+  MOTD="A §nMinecraft server for §nMinecraft for §l§cKroni§r ."
+
 # Custom environment variables
 ENV DIFFICULTY=hard \
-    SPAWN_PROTECTION=0 \
-    GENERATE_STRUCTURES=true \
-    MAX_BUILD_HEIGHT=320 \
-    VIEW_DISTANCE=10 \
-    ONLINE_MODE=false
+  SPAWN_PROTECTION=0 \
+  GENERATE_STRUCTURES=true \
+  MAX_BUILD_HEIGHT=320 \
+  VIEW_DISTANCE=10 \
+  ONLINE_MODE=true
 
 # Metadata
 LABEL maintainer="haziqishere" \
-      version="1.0" \
-      description="Custom Minecraft server with mods and optimizations"
+  version="1.0" \
+  description="Survival Minecraft Server untuk geng-geng kroni"
+
+# Adding Admin/Ops
+ENV OPS="Qimichanga"
 
 EXPOSE 25565 25575
 
