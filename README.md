@@ -55,13 +55,21 @@ make urls
 
 ## 🌐 Access Points
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| Minecraft | `kroni-smp.taile695bc.ts.net:30565` | Game server |
-| Traefik Dashboard | `http://kroni-smp.taile695bc.ts.net:30888/dashboard/` | Traffic routing |
-| ArgoCD | `http://kroni-smp.taile695bc.ts.net:30081` | GitOps deployments |
-| Grafana | `http://kroni-smp.taile695bc.ts.net:30083` | Metrics dashboards |
-| Prefect | `http://kroni-smp.taile695bc.ts.net:30082` | Workflow management |
+  ┌───────────────────┬─────────────────────────────────────────────────────┐
+  │      Service      │                     Correct URL                     │
+  ├───────────────────┼─────────────────────────────────────────────────────┤
+  ├───────────────────┼─────────────────────────────────────────────────────┤
+  │ Minecraft         │ kroni-smp.taile695bc.ts.net:30565                   │
+  ├───────────────────┼─────────────────────────────────────────────────────┤
+  │ ArgoCD            │ http://kroni-smp.taile695bc.ts.net:30652            │
+  ├───────────────────┼─────────────────────────────────────────────────────┤
+  │ Grafana           │ http://kroni-smp.taile695bc.ts.net:30083            │
+  ├───────────────────┼─────────────────────────────────────────────────────┤
+  │ Prefect           │ http://kroni-smp.taile695bc.ts.net:30082            │
+  ├───────────────────┼─────────────────────────────────────────────────────┤
+  │ Traefik Dashboard │ http://kroni-smp.taile695bc.ts.net:30888/dashboard/ │
+  └───────────────────┴─────────────────────────────────────────────────────┘
+  
 
 ## 🔧 Development
 
