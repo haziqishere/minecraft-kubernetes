@@ -1,0 +1,12 @@
+# Workflow orchestration
+prefect>=3.0.0
+
+# AWS S3 for backups
+boto3>=1.34.0
+
+# Kubernetes interaction
+kubernetes>=28.0.0
+
+# Utilities
+python-dateutil>=2.8.0
+pyyaml>=6.0.0
