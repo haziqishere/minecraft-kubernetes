@@ -1,0 +1,5 @@
+
+{
+    "s3_secret_name":"prod-s3-path",
+    "s3_secret_key":"world_backup_s3_path"
+}
