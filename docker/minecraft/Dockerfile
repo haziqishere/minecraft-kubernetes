@@ -6,16 +6,13 @@ FROM itzg/minecraft-server:latest
 COPY --chown=1000:1000 mods/ /data/mods/
 COPY --chown=1000:1000 plugins/ /data/plugins/
 
-ENV server-name="KroniSMP" \
-  MOTD="A §nMinecraft server for §nMinecraft for §l§cKroni§r ."
 
 # Custom environment variables
 ENV DIFFICULTY=hard \
   SPAWN_PROTECTION=0 \
   GENERATE_STRUCTURES=true \
   MAX_BUILD_HEIGHT=320 \
-  VIEW_DISTANCE=10 \
-  ONLINE_MODE=true
+  VIEW_DISTANCE=10 
 
 # Metadata
 LABEL maintainer="haziqishere" \
