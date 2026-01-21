@@ -20,13 +20,11 @@ spec:
       - name: worker
         image: prefecthq/prefect:3-python3.12
         command:
-          - prefect
-          - worker
-          - start
-          - --pool
-          - kubernetes-pool
-          - --type
-          - kubernetes
+          - /bin/bash
+          - -c
+          - |
+            pip install prefect-kubernetes && \
+            prefect worker start --pool kubernetes-pool --type kubernetes
         env:
         - name: PREFECT_API_URL
           value: "http://prefect-server.prefect.svc.cluster.local:4200/api"
