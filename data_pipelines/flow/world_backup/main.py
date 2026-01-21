@@ -6,6 +6,7 @@ from pathlib import Path
 
 from prefect import task, flow, get_run_logger
 from kubernetes import client, config
+from kubernetes.stream import stream
 
 from utilities.aws_utils import (
     get_s3_client,
@@ -60,7 +61,7 @@ def save_world_command(namespace: str, pod_name: str):
     ]
 
     logger.info(f"Executing save-all command in pod {pod_name}")
-    resp = client.stream(
+    resp = stream(
         v1.connect_get_namespaced_pod_exec,
         pod_name,
         namespace,
