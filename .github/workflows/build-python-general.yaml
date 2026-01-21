@@ -6,7 +6,7 @@ on:
       - main
     paths:
       - 'docker/python-general/**'
-      - 'pipelines/**'
+      - 'data_pipelines/**'
       - '.github/workflows/build-python-general.yaml'
   workflow_dispatch:
 
@@ -46,7 +46,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ./docker/python-general
+          context: .
+          file: ./docker/python-general/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
