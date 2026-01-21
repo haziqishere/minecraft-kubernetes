@@ -38,13 +38,19 @@ spec:
         - name: MAX_PLAYERS
           value: "10"
         - name: MOTD
-          value: "Welcome to Kroni SMP Server"
+          value: "§6✦ §l§cKRONI SMP§r §6✦\\n§7Survival • Hard Mode • Paper 1.21"
         - name: ONLINE_MODE
           value: "true"
         - name: ENABLE_RCON
           value: "true"
         - name: RCON_PASSWORD
           value: "minecraft"
+        - name: ICON
+          value: "https://www.reddit.com/media?url=https%3A%2F%2Fpreview.redd.it%2F64x64-pixel-art-from-online-image-not-mine-v0-nv84yfxfwxoe1.png%3Fwidth%3D512%26format%3Dpng%26auto%3Dwebp%26s%3D0785af099a6068d91594e102a6f527673255733c"
+        - name: OVERRIDE_ICON
+          value: "TRUE"
+        - name: SERVER_NAME
+          value: "KroniSMP"
         ports:
         - containerPort: 25565
           name: minecraft
