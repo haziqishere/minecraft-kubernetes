@@ -14,7 +14,7 @@ from pathlib import Path
 # Add parent directory to path to import flow
 sys.path.append(str(Path(__file__).parent.parent))
 
-from data_pipelines.flow.world_backup.main import world_backup_pipeline
+from flow.world_backup.main import world_backup_pipeline
 
 
 if __name__ == "__main__":
@@ -23,7 +23,8 @@ if __name__ == "__main__":
         name="minecraft-world-backup",
         work_pool_name="kubernetes-pool",  # Update this to match your work pool name
         image="haziqishere/python-general:latest",
-        push=False,
+        build=False,  # Skip build - use pre-built image from CI/CD
+        push=False,   # Skip push - image is already pushed by CI/CD
         tags=["minecraft", "backup", "s3"],
         description="Automated Minecraft world backup to S3 with compression",
         version="1.0.0",
