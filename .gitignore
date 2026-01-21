@@ -2,3 +2,4 @@
 .DS_Store
 *-secret.yaml
 .vscode
+__pycache__
