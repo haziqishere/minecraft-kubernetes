@@ -14,8 +14,8 @@ API_ENDPOINTS = {
 
 # Kafka Configuration
 KAFKA_CONFIG = {
-    'bootstrap_servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092').split(','),
-    'topic': os.getenv('KAFKA_TOPIC', 'transit-positions-raw'),
+    'bootstrap_servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka-my-rapidkl-student-298a.c.aivencloud.com:13066').split(','),
+    'topic': os.getenv('KAFKA_TOPIC', 'transit-positions'),
     'acks': 'all',
     'retries': 3,
     'enable_idempotence': True,
