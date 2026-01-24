@@ -17,6 +17,15 @@ curl -L https://repo1.maven.org/maven2/software/amazon/awssdk/s3-transfer-manage
 # Hadoop AWS for Hadoop 3.4.1 (matches Spark 4.0.1)
 curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar -o /usr/share/aws/hadoop/hadoop-aws-3.4.1.jar
 
+# ============= KAFKA SETUP =============  
+echo "Setting up Kafka connector..."  
+  
+mkdir -p /usr/share/kafka/  
+  
+# Download Kafka connector JAR for Spark 4.0.1  
+curl -L https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.1/spark-sql-kafka-0-10_2.13-4.0.1.jar \  
+    -o /usr/share/kafka/spark-sql-kafka-0-10.jar  
+ 
 # ============= ICEBERG SETUP =============
 echo "Setting up Iceberg..."
 
@@ -36,6 +45,8 @@ cp /usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar /opt/spark/jars/
 cp /usr/share/aws/hadoop/hadoop-aws-3.4.1.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar /opt/spark/jars/
+cp /usr/share/kafka/spark-sql-kafka-0-10.jar /opt/spark/jars/
+
 
 # ============= SPARK CONFIGURATION =============
 echo "Configuring Spark..."
