@@ -25,7 +25,7 @@ KAFKA_CONFIG = {
 }
 
 # Producer Configuration
-POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '30'))  # seconds
+POLL_INTERVAL = int(os.getenv('POLL_INTERVAL', '5'))  # seconds
 API_TIMEOUT = int(os.getenv('API_TIMEOUT', '10'))  # seconds
 CIRCUIT_BREAKER_THRESHOLD = int(os.getenv('CIRCUIT_BREAKER_THRESHOLD', '5'))
 CIRCUIT_BREAKER_TIMEOUT = int(os.getenv('CIRCUIT_BREAKER_TIMEOUT', '60'))  # seconds
