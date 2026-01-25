@@ -61,8 +61,14 @@ transit_schema = StructType([
 ])
 
 # SSL cert paths (mounted from Kubernetes secret)
-KAFKA_SSL_CERT = "/etc/kafka/certs/service.cert"
-KAFKA_SSL_KEY = "/etc/kafka/certs/service.key"
+KAFKA_SSL_CERT_PATH = "/etc/kafka/certs/service.cert"
+KAFKA_SSL_KEY_PATH = "/etc/kafka/certs/service.key"
+
+# Read cert and key contents for Kafka SSL config
+with open(KAFKA_SSL_CERT_PATH, 'r') as f:
+    KAFKA_SSL_CERT = f.read()
+with open(KAFKA_SSL_KEY_PATH, 'r') as f:
+    KAFKA_SSL_KEY = f.read()
 
 # Read from Kafka with SSL (mTLS) authentication
 df = spark.readStream \
@@ -74,8 +80,8 @@ df = spark.readStream \
     .option("kafka.ssl.truststore.type", "PEM") \
     .option("kafka.ssl.truststore.location", KAFKA_SSL_CA) \
     .option("kafka.ssl.keystore.type", "PEM") \
-    .option("kafka.ssl.keystore.location", KAFKA_SSL_CERT) \
-    .option("kafka.ssl.key.location", KAFKA_SSL_KEY) \
+    .option("kafka.ssl.keystore.certificate.chain", KAFKA_SSL_CERT) \
+    .option("kafka.ssl.keystore.key", KAFKA_SSL_KEY) \
     .option("failOnDataLoss", "false") \
     .load()
 
