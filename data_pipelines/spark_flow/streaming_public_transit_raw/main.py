@@ -44,20 +44,36 @@ spark = SparkSession.builder \
 spark.sparkContext.setLogLevel("WARN")
 
 # Define schema for transit position messages
-# Based on GTFS Realtime VehiclePosition format
-transit_schema = StructType([
-    StructField("vehicle_id", StringType(), True),
-    StructField("route_id", StringType(), True),
+# Matches the nested JSON structure from Kafka producer
+trip_schema = StructType([
     StructField("trip_id", StringType(), True),
+    StructField("start_time", StringType(), True),
+    StructField("start_date", StringType(), True),
+    StructField("route_id", StringType(), True),
+])
+
+position_schema = StructType([
     StructField("latitude", DoubleType(), True),
     StructField("longitude", DoubleType(), True),
     StructField("bearing", DoubleType(), True),
     StructField("speed", DoubleType(), True),
-    StructField("timestamp", LongType(), True),
-    StructField("current_stop_sequence", IntegerType(), True),
-    StructField("current_status", StringType(), True),
+])
+
+vehicle_schema = StructType([
+    StructField("id", StringType(), True),
+    StructField("license_plate", StringType(), True),
+])
+
+transit_schema = StructType([
+    StructField("entity_id", StringType(), True),
+    StructField("trip", trip_schema, True),
+    StructField("position", position_schema, True),
+    StructField("vehicle", vehicle_schema, True),
+    StructField("vehicle_timestamp", LongType(), True),
+    StructField("feed_timestamp", LongType(), True),
     StructField("category", StringType(), True),
-    StructField("ingestion_time", StringType(), True),
+    StructField("ingestion_timestamp", StringType(), True),
+    StructField("producer_version", StringType(), True),
 ])
 
 # SSL cert paths (mounted from Kubernetes secret)
@@ -90,14 +106,30 @@ parsed_df = df.select(
     from_json(col("value").cast("string"), transit_schema).alias("data"),
     col("timestamp").alias("kafka_timestamp")
 ).select(
-    "data.*",
-    "kafka_timestamp",
+    # Flatten nested structure
+    col("data.entity_id"),
+    col("data.trip.trip_id").alias("trip_id"),
+    col("data.trip.route_id").alias("route_id"),
+    col("data.trip.start_time").alias("trip_start_time"),
+    col("data.trip.start_date").alias("trip_start_date"),
+    col("data.position.latitude").alias("latitude"),
+    col("data.position.longitude").alias("longitude"),
+    col("data.position.bearing").alias("bearing"),
+    col("data.position.speed").alias("speed"),
+    col("data.vehicle.id").alias("vehicle_id"),
+    col("data.vehicle.license_plate").alias("license_plate"),
+    col("data.vehicle_timestamp").alias("vehicle_timestamp"),
+    col("data.feed_timestamp"),
+    col("data.category"),
+    col("data.ingestion_timestamp"),
+    col("data.producer_version"),
+    col("kafka_timestamp"),
     current_timestamp().alias("processing_time")
 )
 
-# Add partition column: date derived from timestamp (unix epoch -> date)
+# Add partition column: date derived from vehicle_timestamp (unix epoch -> date)
 partitioned_df = parsed_df \
-    .withColumn("date", to_date(from_unixtime(col("timestamp"))))
+    .withColumn("date", to_date(from_unixtime(col("vehicle_timestamp"))))
 
 # Write to S3 as Parquet with partitioning by date and route_id
 query = partitioned_df.writeStream \
