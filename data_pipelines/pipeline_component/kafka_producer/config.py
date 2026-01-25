@@ -1,4 +1,12 @@
 import os
+from pathlib import Path
+
+from utilities.config_utils import get_json_config
+from utilities.aws_utils import get_sm_client, retrieve_secret
+
+# Load configuration from config.json
+config_path = Path(__file__).parent / "config.json"
+config = get_json_config(config_path)
 
 # API Configuration
 API_ENDPOINTS = {
@@ -12,16 +20,35 @@ API_ENDPOINTS = {
     }
 }
 
-# Kafka Configuration
+# Retrieve SASL credentials from AWS Secrets Manager
+sm_client = get_sm_client(credentials=None)
+KAFKA_SASL_USERNAME = retrieve_secret(
+    sm_client,
+    config["KAFKA_SECRET_NAME"],
+    config["KAFKA_SASL_USERNAME_KEY"]
+)
+KAFKA_SASL_PASSWORD = retrieve_secret(
+    sm_client,
+    config["KAFKA_SECRET_NAME"],
+    config["KAFKA_SASL_PASSWORD_KEY"]
+)
+
+# Kafka Configuration with Aiven SASL + SSL
 KAFKA_CONFIG = {
-    'bootstrap_servers': os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'kafka-my-rapidkl-student-298a.c.aivencloud.com:13066').split(','),
-    'topic': os.getenv('KAFKA_TOPIC', 'transit-positions'),
+    'bootstrap_servers': config["KAFKA_BOOTSTRAP_SERVERS"].split(','),
+    'topic': config["KAFKA_TOPIC"],
     'acks': 'all',
     'retries': 3,
     'enable_idempotence': True,
     'compression_type': 'lz4',
     'batch_size': 16384,
     'linger_ms': 10,
+    # Aiven SASL + SSL Authentication
+    'security_protocol': 'SASL_SSL',
+    'sasl_mechanism': 'SCRAM-SHA-256',
+    'sasl_plain_username': KAFKA_SASL_USERNAME,
+    'sasl_plain_password': KAFKA_SASL_PASSWORD,
+    'ssl_cafile': config["KAFKA_SSL_CA"],
 }
 
 # Producer Configuration

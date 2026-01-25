@@ -1,19 +1,19 @@
-FROM hazieqishere/python-general:latest
+FROM haziqishere/python-general:latest
 
-WORKDIR /app
+# Install Kafka producer dependencies
+COPY docker/kafka-producer/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
 
-# Install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Create directory for Kafka SSL certificates (mounted at runtime)
+RUN mkdir -p /etc/kafka/certs
 
+# Set PYTHONPATH so utilities can be imported from nested directory
+ENV PYTHONPATH="/app/data_pipelines:${PYTHONPATH}"
 
-# Create non-root user for security
-RUN useradd -m -u 1000 producer && \
-    chown -R data_pipelines/kafka_producer/producer:producer /app
+# Set working directory to kafka_producer (data_pipelines already exists from base image)
+WORKDIR /app/data_pipelines/pipeline_component/kafka_producer
 
-USER producer
-
-# Health check (optional, requires adding health endpoint)
+# Health check
 HEALTHCHECK --interval=30s --timeout=3s --retries=3 \
     CMD python -c "import sys; sys.exit(0)"
 
