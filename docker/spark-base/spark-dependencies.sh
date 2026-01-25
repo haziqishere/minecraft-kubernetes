@@ -17,14 +17,13 @@ curl -L https://repo1.maven.org/maven2/software/amazon/awssdk/s3-transfer-manage
 # Hadoop AWS for Hadoop 3.4.1 (matches Spark 4.0.1)
 curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar -o /usr/share/aws/hadoop/hadoop-aws-3.4.1.jar
 
-# ============= KAFKA SETUP =============  
-echo "Setting up Kafka connector..."  
-  
+# ============= KAFKA SETUP =============
+echo "Setting up Kafka connector..."
+
 mkdir -p /usr/share/kafka/  
   
-# Download Kafka connector JAR for Spark 4.0.1  
-curl -L https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.1/spark-sql-kafka-0-10_2.13-4.0.1.jar \  
-    -o /usr/share/kafka/spark-sql-kafka-0-10.jar  
+# Download Kafka connector JAR for Spark 4.0.1
+curl -L https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.1/spark-sql-kafka-0-10_2.13-4.0.1.jar -o /usr/share/kafka/spark-sql-kafka-0-10.jar  
   
 # ============= ICEBERG SETUP =============
 echo "Setting up Iceberg..."
