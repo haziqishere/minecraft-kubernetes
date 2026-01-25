@@ -1,0 +1,32 @@
+# Centralized Docker image build configuration
+# Defines all images, their dependencies, and trigger paths
+#
+# Note: minecraft-custom has its own workflow (build-minecraft.yaml)
+# because it has special post-build steps (updating deployment manifest)
+
+images:
+  python-general:
+    dockerfile: docker/python-general/Dockerfile
+    context: .
+    depends_on: []
+    paths:
+      - docker/python-general/**
+      - data_pipelines/utilities/**
+
+  kafka-producer:
+    dockerfile: docker/kafka-producer/Dockerfile
+    context: .
+    depends_on:
+      - python-general
+    paths:
+      - docker/kafka-producer/**
+      - data_pipelines/pipeline_component/kafka_producer/**
+
+  spark-base:
+    dockerfile: docker/spark-base/Dockerfile
+    context: .
+    depends_on: []
+    paths:
+      - docker/spark-base/**
+      - data_pipelines/spark_flow/**
+      - data_pipelines/utilities/**
