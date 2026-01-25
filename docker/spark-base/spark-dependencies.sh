@@ -20,10 +20,15 @@ curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop
 # ============= KAFKA SETUP =============
 echo "Setting up Kafka connector..."
 
-mkdir -p /usr/share/kafka/  
-  
-# Download Kafka connector JAR for Spark 4.0.1
-curl -L https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.1/spark-sql-kafka-0-10_2.13-4.0.1.jar -o /usr/share/kafka/spark-sql-kafka-0-10.jar  
+mkdir -p /usr/share/kafka/
+
+# Download Kafka connector JAR for Spark 4.0.1 and its dependencies
+curl -L https://repo1.maven.org/maven2/org/apache/spark/spark-sql-kafka-0-10_2.13/4.0.1/spark-sql-kafka-0-10_2.13-4.0.1.jar -o /usr/share/kafka/spark-sql-kafka-0-10.jar
+curl -L https://repo1.maven.org/maven2/org/apache/spark/spark-token-provider-kafka-0-10_2.13/4.0.1/spark-token-provider-kafka-0-10_2.13-4.0.1.jar -o /usr/share/kafka/spark-token-provider-kafka-0-10.jar
+curl -L https://repo1.maven.org/maven2/org/apache/kafka/kafka-clients/3.9.1/kafka-clients-3.9.1.jar -o /usr/share/kafka/kafka-clients.jar
+curl -L https://repo1.maven.org/maven2/org/apache/commons/commons-pool2/2.12.0/commons-pool2-2.12.0.jar -o /usr/share/kafka/commons-pool2.jar
+curl -L https://repo1.maven.org/maven2/org/lz4/lz4-java/1.8.0/lz4-java-1.8.0.jar -o /usr/share/kafka/lz4-java.jar
+curl -L https://repo1.maven.org/maven2/org/xerial/snappy/snappy-java/1.1.10.7/snappy-java-1.1.10.7.jar -o /usr/share/kafka/snappy-java.jar  
   
 # ============= ICEBERG SETUP =============
 echo "Setting up Iceberg..."
@@ -44,7 +49,7 @@ cp /usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar /opt/spark/jars/
 cp /usr/share/aws/hadoop/hadoop-aws-3.4.1.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar /opt/spark/jars/
-cp /usr/share/kafka/spark-sql-kafka-0-10.jar /opt/spark/jars/
+cp /usr/share/kafka/*.jar /opt/spark/jars/
 
 
 # ============= SPARK CONFIGURATION =============
@@ -123,7 +128,7 @@ EOF
 cat > /opt/spark/conf/spark-env.sh <<'EOF'
 #!/bin/bash
 
-export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.20.160.jar:/usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar:/usr/share/aws/hadoop/hadoop-aws-3.4.1.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/spark-sql-kafka-0-10.jar
+export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.20.160.jar:/usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar:/usr/share/aws/hadoop/hadoop-aws-3.4.1.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
 EOF
 
 chmod +x /opt/spark/conf/spark-env.sh
