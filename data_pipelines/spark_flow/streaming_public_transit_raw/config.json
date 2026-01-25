@@ -7,5 +7,5 @@
     "KAFKA_SASL_USERNAME_KEY":"transit-username",
     "KAFKA_SASL_PASSWORD_KEY":"transit-password",
 
-    "S3_OUTPUT_PATH": "s3a://public_transport_dataset/raw/transit-positions"
+    "S3_OUTPUT_PATH": "s3a://public-transport-dataset/raw"
 }
