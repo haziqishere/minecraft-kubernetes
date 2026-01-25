@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transit-kafka-producer
+  namespace: streaming
+  labels:
+    app: transit-kafka-producer
+spec:
+  replicas: 1  # Single replica for polling pattern
+  selector:
+    matchLabels:
+      app: transit-kafka-producer
+  template:
+    metadata:
+      labels:
+        app: transit-kafka-producer
+    spec:
+      containers:
+      - name: producer
+        image: haziqishere/kafka-producer:latest
+        imagePullPolicy: Always
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-my-rapidkl-student-298a.c.aivencloud.com:13066"
+        - name: KAFKA_TOPIC
+          value: "transit-positions"
+        - name: KAFKA_SECURITY_PROTOCOL
+          value: "SASL_SSL"
+        - name: KAFKA_SASL_MECHANISM
+          value: "SCRAM-SHA-256"
+        - name: KAFKA_SASL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: aiven-kafka-credentials
+              key: KAFKA_SASL_USERNAME
+        - name: KAFKA_SASL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aiven-kafka-credentials
+              key: KAFKA_SASL_PASSWORD
+        - name: KAFKA_SSL_CA
+          value: "/etc/kafka/certs/ca.pem"
+        - name: POLL_INTERVAL
+          value: "30"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: API_TIMEOUT
+          value: "10"
+        - name: CIRCUIT_BREAKER_THRESHOLD
+          value: "5"
+        - name: CIRCUIT_BREAKER_TIMEOUT
+          value: "60"
+        volumeMounts:
+        - name: kafka-certs
+          mountPath: /etc/kafka/certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+        livenessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        readinessProbe:
+          exec:
+            command:
+            - python
+            - -c
+            - "import sys; sys.exit(0)"
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      volumes:
+      - name: kafka-certs
+        secret:
+          secretName: aiven-kafka-credentials
+          items:
+          - key: ca.pem
+            path: ca.pem
+      restartPolicy: Always

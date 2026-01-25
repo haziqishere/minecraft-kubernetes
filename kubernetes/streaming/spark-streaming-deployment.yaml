@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transit-spark-streaming
+  namespace: streaming
+  labels:
+    app: transit-spark-streaming
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transit-spark-streaming
+  template:
+    metadata:
+      labels:
+        app: transit-spark-streaming
+    spec:
+      containers:
+      - name: spark-streaming
+        image: haziqishere/spark-base:latest
+        imagePullPolicy: Always
+        command: ["spark-submit"]
+        args:
+          - "--master"
+          - "local[*]"
+          - "--packages"
+          - "org.apache.spark:spark-sql-kafka-0-10_2.12:3.5.0,org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262"
+          - "--conf"
+          - "spark.driver.extraJavaOptions=-Divy.cache.dir=/tmp -Divy.home=/tmp"
+          - "/opt/spark/data_pipelines/spark_flow/streaming_public_transit_raw/main.py"
+        env:
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka-my-rapidkl-student-298a.c.aivencloud.com:13066"
+        - name: KAFKA_TOPIC
+          value: "transit-positions"
+        - name: KAFKA_SASL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: aiven-kafka-credentials
+              key: KAFKA_SASL_USERNAME
+        - name: KAFKA_SASL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: aiven-kafka-credentials
+              key: KAFKA_SASL_PASSWORD
+        - name: KAFKA_SSL_CA
+          value: "/etc/kafka/certs/ca.pem"
+        - name: S3_BUCKET
+          value: "public-transport-dataset"
+        - name: S3_PREFIX
+          value: "raw"
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_DEFAULT_REGION
+        volumeMounts:
+        - name: kafka-certs
+          mountPath: /etc/kafka/certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - -f
+            - spark
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          exec:
+            command:
+            - pgrep
+            - -f
+            - spark
+          initialDelaySeconds: 30
+          periodSeconds: 15
+      volumes:
+      - name: kafka-certs
+        secret:
+          secretName: aiven-kafka-credentials
+          items:
+          - key: ca.pem
+            path: ca.pem
+      restartPolicy: Always
