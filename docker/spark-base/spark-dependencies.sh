@@ -8,11 +8,11 @@ echo "Setting up AWS SDK v2..."
 
 mkdir -p /usr/share/aws/aws-java-sdk /usr/share/aws/hadoop
 
-# AWS SDK v2 Bundle (required for Spark 4.0.1)
-curl -L https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.20.160/bundle-2.20.160.jar -o /usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.20.160.jar
+# AWS SDK v2 Bundle (required for Spark 4.0.1 / Hadoop 3.4.1 - needs 2.25+)
+curl -L https://repo1.maven.org/maven2/software/amazon/awssdk/bundle/2.25.11/bundle-2.25.11.jar -o /usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.25.11.jar
 
 # AWS SDK v2 S3 Transfer Manager (required for ObjectTransfer class)
-curl -L https://repo1.maven.org/maven2/software/amazon/awssdk/s3-transfer-manager/2.20.160/s3-transfer-manager-2.20.160.jar -o /usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar
+curl -L https://repo1.maven.org/maven2/software/amazon/awssdk/s3-transfer-manager/2.25.11/s3-transfer-manager-2.25.11.jar -o /usr/share/aws/aws-java-sdk/s3-transfer-manager-2.25.11.jar
 
 # Hadoop AWS for Hadoop 3.4.1 (matches Spark 4.0.1)
 curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.4.1/hadoop-aws-3.4.1.jar -o /usr/share/aws/hadoop/hadoop-aws-3.4.1.jar
@@ -44,8 +44,8 @@ curl -L https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.7
 
 # Copy ALL required JAR files to Spark's jars directory
 echo "Copying JARs to Spark classpath..."
-cp /usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.20.160.jar /opt/spark/jars/
-cp /usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar /opt/spark/jars/
+cp /usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.25.11.jar /opt/spark/jars/
+cp /usr/share/aws/aws-java-sdk/s3-transfer-manager-2.25.11.jar /opt/spark/jars/
 cp /usr/share/aws/hadoop/hadoop-aws-3.4.1.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar /opt/spark/jars/
@@ -128,7 +128,7 @@ EOF
 cat > /opt/spark/conf/spark-env.sh <<'EOF'
 #!/bin/bash
 
-export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.20.160.jar:/usr/share/aws/aws-java-sdk/s3-transfer-manager-2.20.160.jar:/usr/share/aws/hadoop/hadoop-aws-3.4.1.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
+export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-2.25.11.jar:/usr/share/aws/aws-java-sdk/s3-transfer-manager-2.25.11.jar:/usr/share/aws/hadoop/hadoop-aws-3.4.1.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
 EOF
 
 chmod +x /opt/spark/conf/spark-env.sh
