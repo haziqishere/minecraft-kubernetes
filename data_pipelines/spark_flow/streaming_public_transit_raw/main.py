@@ -30,11 +30,14 @@ KAFKA_SASL_PASSWORD = retrieve_secret(
     config["KAFKA_SASL_PASSWORD_KEY"]
 )
 
-# Create Spark session
+# Create Spark session with S3A configuration for Hadoop 3.4.x / AWS SDK v2
 spark = SparkSession.builder \
     .appName("TransitPositionsStreaming") \
     .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
-    .config("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain") \
+    .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
+    .config("spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", "")) \
+    .config("spark.hadoop.fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", "")) \
+    .config("spark.hadoop.fs.s3a.endpoint", "s3.amazonaws.com") \
     .getOrCreate()
 
 # Set log level
