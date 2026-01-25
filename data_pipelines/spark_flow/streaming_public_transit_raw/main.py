@@ -60,20 +60,22 @@ transit_schema = StructType([
     StructField("ingestion_time", StringType(), True),
 ])
 
-# Build JAAS config for SASL authentication
-jaas_config = f'org.apache.kafka.common.security.scram.ScramLoginModule required username="{KAFKA_SASL_USERNAME}" password="{KAFKA_SASL_PASSWORD}";'
+# SSL cert paths (mounted from Kubernetes secret)
+KAFKA_SSL_CERT = "/etc/kafka/certs/service.cert"
+KAFKA_SSL_KEY = "/etc/kafka/certs/service.key"
 
-# Read from Kafka with SASL_SSL authentication
+# Read from Kafka with SSL (mTLS) authentication
 df = spark.readStream \
     .format("kafka") \
     .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "latest") \
-    .option("kafka.security.protocol", "SASL_SSL") \
-    .option("kafka.sasl.mechanism", "SCRAM-SHA-256") \
-    .option("kafka.sasl.jaas.config", jaas_config) \
+    .option("kafka.security.protocol", "SSL") \
     .option("kafka.ssl.truststore.type", "PEM") \
     .option("kafka.ssl.truststore.location", KAFKA_SSL_CA) \
+    .option("kafka.ssl.keystore.type", "PEM") \
+    .option("kafka.ssl.keystore.location", KAFKA_SSL_CERT) \
+    .option("kafka.ssl.key.location", KAFKA_SSL_KEY) \
     .option("failOnDataLoss", "false") \
     .load()
 
