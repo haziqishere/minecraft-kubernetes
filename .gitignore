@@ -2,4 +2,5 @@
 .DS_Store
 *-secret.yaml
 .vscode
+ca.pem
 __pycache__
