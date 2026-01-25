@@ -13,6 +13,9 @@ RUN chmod +x /tmp/spark-dependencies.sh && \
     /tmp/spark-dependencies.sh && \                                                                                                                                          
     rm /tmp/spark-dependencies.sh                                                                                                                                            
 
-COPY data_pipelines /opt/spark/data_pipelines      
+COPY data_pipelines /opt/spark/data_pipelines
+
+# Set PYTHONPATH so utilities can be imported
+ENV PYTHONPATH="/opt/spark/data_pipelines:${PYTHONPATH}"
 
 WORKDIR /opt/spark
