@@ -30,13 +30,13 @@ def get_s3_client(credentials) -> boto3.client:
 
 # SM #
 
-def get_sm_client(credentials) -> boto3.client:
+def get_sm_client(credentials=None, region_name="ap-southeast-1") -> boto3.client:
     if credentials is None:
-        sm_client =boto3.client('secretsmanager')
+        sm_client = boto3.client('secretsmanager', region_name=region_name)
     else:
         sm_client = boto3.client(
             "secretsmanager",
-            region_name="ap-southeast-1",
+            region_name=region_name,
             aws_access_key_id=credentials["AccessKeyId"],
             aws_secret_access_key=credentials["SecretAccessKey"],
             aws_session_token=credentials["SessionToken"]
