@@ -33,13 +33,14 @@ KAFKA_SASL_PASSWORD = retrieve_secret(
     config["KAFKA_SASL_PASSWORD_KEY"]
 )
 
-# Kafka Configuration with Aiven SASL + SSL
+# Kafka topic (used separately, not in producer config)
+KAFKA_TOPIC = config["KAFKA_TOPIC"]
+
+# Kafka Producer Configuration with Aiven SASL + SSL
 KAFKA_CONFIG = {
     'bootstrap_servers': config["KAFKA_BOOTSTRAP_SERVERS"].split(','),
-    'topic': config["KAFKA_TOPIC"],
     'acks': 'all',
     'retries': 3,
-    'enable_idempotence': True,
     'compression_type': 'lz4',
     'batch_size': 16384,
     'linger_ms': 10,

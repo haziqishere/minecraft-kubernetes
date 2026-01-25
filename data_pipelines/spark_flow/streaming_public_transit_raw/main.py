@@ -14,19 +14,19 @@ config = get_json_config(config_path)
 S3_OUTPUT_PATH = config["S3_OUTPUT_PATH"]
 KAFKA_BOOTSTRAP_SERVERS = config["KAFKA_BOOTSTRAP_SERVERS"]
 KAFKA_TOPIC = config["KAFKA_TOPIC"]
-KAFKA_SSL_CA = ["KAFKA_SSL_CA"]
-KAFKA_SECRETS_NAME = ["KAFKA_SECRETS_NAME"]
+KAFKA_SSL_CA = config["KAFKA_SSL_CA"]
+KAFKA_SECRET_NAME = config["KAFKA_SECRET_NAME"]
 CHECKPOINT_LOCATION = f'{S3_OUTPUT_PATH}/checkpoints/transit-streaming'
 
 sm_client = get_sm_client()
 KAFKA_SASL_USERNAME = retrieve_secret(
     sm_client,
-    KAFKA_SECRETS_NAME,
+    KAFKA_SECRET_NAME,
     config["KAFKA_SASL_USERNAME_KEY"]
 )
 KAFKA_SASL_PASSWORD = retrieve_secret(
     sm_client,
-    KAFKA_SECRETS_NAME,
+    KAFKA_SECRET_NAME,
     config["KAFKA_SASL_PASSWORD_KEY"]
 )
 
