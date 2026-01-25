@@ -16,7 +16,7 @@ from datetime import datetime
 import signal
 import sys
 from config import (
-    API_ENDPOINTS, KAFKA_CONFIG, POLL_INTERVAL, API_TIMEOUT,
+    API_ENDPOINTS, KAFKA_CONFIG, KAFKA_TOPIC, POLL_INTERVAL, API_TIMEOUT,
     CIRCUIT_BREAKER_THRESHOLD, CIRCUIT_BREAKER_TIMEOUT, LOG_LEVEL
 )
 
@@ -281,7 +281,7 @@ class TransitProducer:
         
         try:
             future = self.producer.send(
-                KAFKA_CONFIG['topic'],
+                KAFKA_TOPIC,
                 key=key.encode('utf-8') if key else None,
                 value=data
             )
