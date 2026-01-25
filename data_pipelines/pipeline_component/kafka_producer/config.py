@@ -44,12 +44,14 @@ KAFKA_CONFIG = {
     'compression_type': 'lz4',
     'batch_size': 16384,
     'linger_ms': 10,
-    # Aiven SASL + SSL Authentication
+    # Aiven SSL + SASL Authentication (mTLS)
     'security_protocol': 'SASL_SSL',
     'sasl_mechanism': 'SCRAM-SHA-256',
     'sasl_plain_username': KAFKA_SASL_USERNAME,
     'sasl_plain_password': KAFKA_SASL_PASSWORD,
     'ssl_cafile': config["KAFKA_SSL_CA"],
+    'ssl_certfile': config["KAFKA_SSL_CERT"],
+    'ssl_keyfile': config["KAFKA_SSL_KEY"],
 }
 
 # Producer Configuration

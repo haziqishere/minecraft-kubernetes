@@ -100,4 +100,8 @@ spec:
           items:
           - key: ca.pem
             path: ca.pem
+          - key: service.cert
+            path: service.cert
+          - key: service.key
+            path: service.key
       restartPolicy: Always
