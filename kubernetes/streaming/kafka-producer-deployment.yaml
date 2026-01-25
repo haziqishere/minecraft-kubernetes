@@ -50,6 +50,22 @@ spec:
           value: "5"
         - name: CIRCUIT_BREAKER_TIMEOUT
           value: "60"
+        # AWS credentials for Secrets Manager access
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_DEFAULT_REGION
         volumeMounts:
         - name: kafka-certs
           mountPath: /etc/kafka/certs
