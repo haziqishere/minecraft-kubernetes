@@ -12,7 +12,7 @@ config_path = Path(__file__).parent / "config.json"
 config = get_json_config(config_path)
 
 S3_OUTPUT_PATH = config["S3_OUTPUT_PATH"]
-KAFKA_BOOSTRAP_SERVERS = config["KAFKA_BOOSTRAP_SERVERS"]
+KAFKA_BOOTSTRAP_SERVERS = config["KAFKA_BOOTSTRAP_SERVERS"]
 KAFKA_TOPIC = config["KAFKA_TOPIC"]
 KAFKA_SSL_CA = ["KAFKA_SSL_CA"]
 KAFKA_SECRETS_NAME = ["KAFKA_SECRETS_NAME"]
@@ -63,7 +63,7 @@ jaas_config = f'org.apache.kafka.common.security.scram.ScramLoginModule required
 # Read from Kafka with SASL_SSL authentication
 df = spark.readStream \
     .format("kafka") \
-    .option("kafka.bootstrap.servers", KAFKA_BOOSTRAP_SERVERS) \
+    .option("kafka.bootstrap.servers", KAFKA_BOOTSTRAP_SERVERS) \
     .option("subscribe", KAFKA_TOPIC) \
     .option("startingOffsets", "latest") \
     .option("kafka.security.protocol", "SASL_SSL") \
