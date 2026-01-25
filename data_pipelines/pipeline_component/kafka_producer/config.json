@@ -2,6 +2,8 @@
     "KAFKA_BOOTSTRAP_SERVERS": "kafka-my-rapidkl-student-298a.c.aivencloud.com:13066",
     "KAFKA_TOPIC": "transit-positions",
     "KAFKA_SSL_CA": "/etc/kafka/certs/ca.pem",
+    "KAFKA_SSL_CERT": "/etc/kafka/certs/service.cert",
+    "KAFKA_SSL_KEY": "/etc/kafka/certs/service.key",
 
     "KAFKA_SECRET_NAME": "prod-kafka-secrets",
     "KAFKA_SASL_USERNAME_KEY": "transit-username",
