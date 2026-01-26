@@ -222,12 +222,16 @@ class TransitProducer:
         # Extract nested fields safely
         trip_data = {}
         if vehicle.HasField('trip'):
+            trip = vehicle.trip
             trip_data = {
-                'trip_id': vehicle.trip.trip_id,
-                'start_time': vehicle.trip.start_time,
-                'start_date': vehicle.trip.start_date,
-                'route_id': vehicle.trip.route_id
+                'trip_id': trip.trip_id,
+                'start_time': trip.start_time,
+                'start_date': trip.start_date,
+                'route_id': trip.route_id
             }
+            # Debug: log first few to verify extraction
+            if self.metrics['total_sent'] < 3:
+                logger.info(f"DEBUG trip_data: trip_id={repr(trip.trip_id)}, start_time={repr(trip.start_time)}, start_date={repr(trip.start_date)}, route_id={repr(trip.route_id)}")
         
         position_data = {}
         if vehicle.HasField('position'):
