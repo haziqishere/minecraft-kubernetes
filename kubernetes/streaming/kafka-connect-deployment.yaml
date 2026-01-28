@@ -22,7 +22,7 @@ spec:
             - |
               cat /certs-input/service.cert /certs-input/service.key > /certs-output/client.keystore.pem
               cp /certs-input/ca.pem /certs-output/ca.pem
-              chmod 600 /certs-output/*
+              chmod 644 /certs-output/*
           volumeMounts:
             - name: kafka-certs-input
               mountPath: /certs-input
