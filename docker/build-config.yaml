@@ -30,3 +30,10 @@ images:
       - docker/spark-base/**
       - data_pipelines/spark_flow/**
       - data_pipelines/utilities/**
+
+  kafka-connect:
+    dockerfile: docker/kafka-connect/Dockerfile
+    context: .
+    depends_on: []
+    paths:
+      - docker/kafka-connect/**
