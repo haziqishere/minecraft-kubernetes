@@ -6,7 +6,7 @@ metadata:
   labels:
     app: transit-spark-streaming
 spec:
-  replicas: 1
+  replicas: 0  # Disabled - replaced by Kafka Connect S3 sink
   selector:
     matchLabels:
       app: transit-spark-streaming

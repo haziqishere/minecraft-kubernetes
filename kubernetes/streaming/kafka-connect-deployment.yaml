@@ -13,6 +13,22 @@ spec:
       labels:
         app: kafka-connect
     spec:
+      initContainers:
+        - name: create-keystore
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              cat /certs-input/service.cert /certs-input/service.key > /certs-output/client.keystore.pem
+              cp /certs-input/ca.pem /certs-output/ca.pem
+              chmod 600 /certs-output/*
+          volumeMounts:
+            - name: kafka-certs-input
+              mountPath: /certs-input
+              readOnly: true
+            - name: kafka-certs
+              mountPath: /certs-output
       containers:
         - name: kafka-connect
           image: haziqishere/kafka-connect:latest
@@ -21,12 +37,8 @@ spec:
             - containerPort: 8083
               name: rest-api
           env:
-            # Kafka Connect worker configuration
             - name: CONNECT_BOOTSTRAP_SERVERS
-              valueFrom:
-                secretKeyRef:
-                  name: aiven-kafka-credentials
-                  key: bootstrap_servers
+              value: "kafka-my-rapidkl-student-298a.c.aivencloud.com:13066"
             - name: CONNECT_REST_ADVERTISED_HOST_NAME
               valueFrom:
                 fieldRef:
@@ -99,7 +111,6 @@ spec:
                   key: aws_secret_access_key
             - name: AWS_REGION
               value: "ap-southeast-1"
-            # Logging
             - name: CONNECT_LOG4J_ROOT_LOGLEVEL
               value: "INFO"
           volumeMounts:
@@ -125,34 +136,6 @@ spec:
               port: 8083
             initialDelaySeconds: 30
             periodSeconds: 10
-      volumes:
-        - name: kafka-certs
-          secret:
-            secretName: aiven-kafka-credentials
-            items:
-              - key: ca.pem
-                path: ca.pem
-              - key: service.cert
-                path: service.cert
-              - key: service.key
-                path: service.key
-      initContainers:
-        # Combine cert + key into PEM keystore format
-        - name: create-keystore
-          image: busybox:1.36
-          command:
-            - sh
-            - -c
-            - |
-              cat /certs-input/service.cert /certs-input/service.key > /certs-output/client.keystore.pem
-              cp /certs-input/ca.pem /certs-output/ca.pem
-              chmod 600 /certs-output/*
-          volumeMounts:
-            - name: kafka-certs-input
-              mountPath: /certs-input
-              readOnly: true
-            - name: kafka-certs
-              mountPath: /certs-output
       volumes:
         - name: kafka-certs-input
           secret:
