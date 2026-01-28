@@ -53,12 +53,19 @@ spec:
               value: "_connect-offsets"
             - name: CONNECT_STATUS_STORAGE_TOPIC
               value: "_connect-status"
+            # Aiven student tier: max 2 partitions per topic, limited brokers
             - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
-              value: "3"
+              value: "1"
             - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
-              value: "3"
+              value: "1"
             - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
-              value: "3"
+              value: "1"
+            - name: CONNECT_CONFIG_STORAGE_PARTITIONS
+              value: "1"
+            - name: CONNECT_OFFSET_STORAGE_PARTITIONS
+              value: "2"
+            - name: CONNECT_STATUS_STORAGE_PARTITIONS
+              value: "1"
             - name: CONNECT_KEY_CONVERTER
               value: "org.apache.kafka.connect.storage.StringConverter"
             - name: CONNECT_VALUE_CONVERTER
