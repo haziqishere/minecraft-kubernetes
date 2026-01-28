@@ -9,6 +9,7 @@ from urllib3.util.retry import Retry
 from kafka import KafkaProducer
 from kafka.errors import KafkaError
 from google.transit import gtfs_realtime_pb2
+from google.protobuf.json_format import MessageToDict
 import time
 import json
 import logging
@@ -208,56 +209,31 @@ class TransitProducer:
     def parse_entity(self, entity, category, feed_timestamp):
         """
         Parse GTFS entity into JSON-serializable dict
-        
+
         Args:
             entity: GTFS entity object
             category: API category (rapid-bus-kl, rapid-bus-mrtfeeder)
             feed_timestamp: Timestamp from feed header
-            
+
         Returns:
             dict: Parsed entity data
         """
-        vehicle = entity.vehicle
-        
-        # Extract nested fields safely
-        trip_data = {}
-        if vehicle.HasField('trip'):
-            trip = vehicle.trip
-            trip_data = {
-                'trip_id': trip.trip_id,
-                'start_time': trip.start_time,
-                'start_date': trip.start_date,
-                'route_id': trip.route_id
-            }
-            # Debug: log first few to verify extraction
-            if self.metrics['total_sent'] < 3:
-                logger.info(f"DEBUG trip_data: trip_id={repr(trip.trip_id)}, start_time={repr(trip.start_time)}, start_date={repr(trip.start_date)}, route_id={repr(trip.route_id)}")
-        
-        position_data = {}
-        if vehicle.HasField('position'):
-            position_data = {
-                'latitude': vehicle.position.latitude,
-                'longitude': vehicle.position.longitude,
-                'bearing': vehicle.position.bearing if vehicle.position.HasField('bearing') else None,
-                'speed': vehicle.position.speed if vehicle.position.HasField('speed') else None
-            }
-        
-        vehicle_data = {}
-        if vehicle.HasField('vehicle'):
-            vehicle_data = {
-                'id': vehicle.vehicle.id,
-                'license_plate': vehicle.vehicle.license_plate
-            }
-        
+        # Use MessageToDict for reliable protobuf -> dict conversion
+        # preserving_proto_field_name=True keeps snake_case field names
+        vehicle_dict = MessageToDict(
+            entity.vehicle,
+            preserving_proto_field_name=True
+        )
+
         # Build enriched payload
         return {
-            # Original data
+            # Original data from protobuf
             'entity_id': entity.id,
-            'trip': trip_data,
-            'position': position_data,
-            'vehicle': vehicle_data,
-            'vehicle_timestamp': vehicle.timestamp if vehicle.HasField('timestamp') else None,
-            
+            'trip': vehicle_dict.get('trip', {}),
+            'position': vehicle_dict.get('position', {}),
+            'vehicle': vehicle_dict.get('vehicle', {}),
+            'vehicle_timestamp': vehicle_dict.get('timestamp'),
+
             # Metadata (enrichment at source)
             'feed_timestamp': feed_timestamp,
             'category': category,

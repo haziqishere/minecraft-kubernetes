@@ -1,0 +1,182 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka-connect
+  namespace: streaming
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka-connect
+  template:
+    metadata:
+      labels:
+        app: kafka-connect
+    spec:
+      containers:
+        - name: kafka-connect
+          image: haziqishere/kafka-connect:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8083
+              name: rest-api
+          env:
+            # Kafka Connect worker configuration
+            - name: CONNECT_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  name: aiven-kafka-credentials
+                  key: bootstrap_servers
+            - name: CONNECT_REST_ADVERTISED_HOST_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONNECT_REST_PORT
+              value: "8083"
+            - name: CONNECT_GROUP_ID
+              value: "transit-kafka-connect"
+            - name: CONNECT_CONFIG_STORAGE_TOPIC
+              value: "_connect-configs"
+            - name: CONNECT_OFFSET_STORAGE_TOPIC
+              value: "_connect-offsets"
+            - name: CONNECT_STATUS_STORAGE_TOPIC
+              value: "_connect-status"
+            - name: CONNECT_CONFIG_STORAGE_REPLICATION_FACTOR
+              value: "3"
+            - name: CONNECT_OFFSET_STORAGE_REPLICATION_FACTOR
+              value: "3"
+            - name: CONNECT_STATUS_STORAGE_REPLICATION_FACTOR
+              value: "3"
+            - name: CONNECT_KEY_CONVERTER
+              value: "org.apache.kafka.connect.storage.StringConverter"
+            - name: CONNECT_VALUE_CONVERTER
+              value: "org.apache.kafka.connect.json.JsonConverter"
+            - name: CONNECT_VALUE_CONVERTER_SCHEMAS_ENABLE
+              value: "false"
+            # SSL/mTLS configuration for Aiven Kafka
+            - name: CONNECT_SECURITY_PROTOCOL
+              value: "SSL"
+            - name: CONNECT_SSL_TRUSTSTORE_TYPE
+              value: "PEM"
+            - name: CONNECT_SSL_TRUSTSTORE_LOCATION
+              value: "/etc/kafka/certs/ca.pem"
+            - name: CONNECT_SSL_KEYSTORE_TYPE
+              value: "PEM"
+            - name: CONNECT_SSL_KEYSTORE_LOCATION
+              value: "/etc/kafka/certs/client.keystore.pem"
+            # Consumer SSL config (for reading from Kafka)
+            - name: CONNECT_CONSUMER_SECURITY_PROTOCOL
+              value: "SSL"
+            - name: CONNECT_CONSUMER_SSL_TRUSTSTORE_TYPE
+              value: "PEM"
+            - name: CONNECT_CONSUMER_SSL_TRUSTSTORE_LOCATION
+              value: "/etc/kafka/certs/ca.pem"
+            - name: CONNECT_CONSUMER_SSL_KEYSTORE_TYPE
+              value: "PEM"
+            - name: CONNECT_CONSUMER_SSL_KEYSTORE_LOCATION
+              value: "/etc/kafka/certs/client.keystore.pem"
+            # Producer SSL config (for internal topics)
+            - name: CONNECT_PRODUCER_SECURITY_PROTOCOL
+              value: "SSL"
+            - name: CONNECT_PRODUCER_SSL_TRUSTSTORE_TYPE
+              value: "PEM"
+            - name: CONNECT_PRODUCER_SSL_TRUSTSTORE_LOCATION
+              value: "/etc/kafka/certs/ca.pem"
+            - name: CONNECT_PRODUCER_SSL_KEYSTORE_TYPE
+              value: "PEM"
+            - name: CONNECT_PRODUCER_SSL_KEYSTORE_LOCATION
+              value: "/etc/kafka/certs/client.keystore.pem"
+            # AWS credentials for S3
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: aws_access_key_id
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: aws_secret_access_key
+            - name: AWS_REGION
+              value: "ap-southeast-1"
+            # Logging
+            - name: CONNECT_LOG4J_ROOT_LOGLEVEL
+              value: "INFO"
+          volumeMounts:
+            - name: kafka-certs
+              mountPath: /etc/kafka/certs
+              readOnly: true
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
+          livenessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /connectors
+              port: 8083
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: kafka-certs
+          secret:
+            secretName: aiven-kafka-credentials
+            items:
+              - key: ca.pem
+                path: ca.pem
+              - key: service.cert
+                path: service.cert
+              - key: service.key
+                path: service.key
+      initContainers:
+        # Combine cert + key into PEM keystore format
+        - name: create-keystore
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              cat /certs-input/service.cert /certs-input/service.key > /certs-output/client.keystore.pem
+              cp /certs-input/ca.pem /certs-output/ca.pem
+              chmod 600 /certs-output/*
+          volumeMounts:
+            - name: kafka-certs-input
+              mountPath: /certs-input
+              readOnly: true
+            - name: kafka-certs
+              mountPath: /certs-output
+      volumes:
+        - name: kafka-certs-input
+          secret:
+            secretName: aiven-kafka-credentials
+            items:
+              - key: ca.pem
+                path: ca.pem
+              - key: service.cert
+                path: service.cert
+              - key: service.key
+                path: service.key
+        - name: kafka-certs
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka-connect
+  namespace: streaming
+spec:
+  selector:
+    app: kafka-connect
+  ports:
+    - port: 8083
+      targetPort: 8083
+      name: rest-api
+  type: ClusterIP
