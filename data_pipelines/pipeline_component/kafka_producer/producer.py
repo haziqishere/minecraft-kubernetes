@@ -14,6 +14,7 @@ import time
 import json
 import logging
 from datetime import datetime
+from zoneinfo import ZoneInfo
 import signal
 import sys
 from config import (
@@ -224,6 +225,7 @@ class TransitProducer:
             entity.vehicle,
             preserving_proto_field_name=True
         )
+        tz = ZoneInfo("Asia/Kuala_Lumpur")
 
         # Build enriched payload
         return {
@@ -237,7 +239,7 @@ class TransitProducer:
             # Metadata (enrichment at source)
             'feed_timestamp': feed_timestamp,
             'category': category,
-            'ingestion_timestamp': datetime.utcnow().isoformat(),
+            'ingestion_timestamp': datetime.now(tz=tz).isoformat(),
             'producer_version': '1.0'
         }
     
