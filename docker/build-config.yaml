@@ -11,7 +11,7 @@ images:
     depends_on: []
     paths:
       - docker/python-general/**
-      - data_pipelines/utilities/**
+      - data_pipelines/**
 
   kafka-producer:
     dockerfile: docker/kafka-producer/Dockerfile
