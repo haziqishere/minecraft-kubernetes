@@ -6,37 +6,34 @@ metadata:
 data:
   s3-sink-connector.json: |
     {
-      "name": "transit-s3-sink",
-      "config": {
-        "connector.class": "io.confluent.connect.s3.S3SinkConnector",
-        "tasks.max": "1",
-        "topics": "transit-positions",
+      "connector.class": "io.confluent.connect.s3.S3SinkConnector",
+      "tasks.max": "1",
+      "topics": "transit-positions",
 
-        "s3.region": "ap-southeast-1",
-        "s3.bucket.name": "public-transport-dataset",
-        "topics.dir": "raw",
+      "s3.region": "ap-southeast-1",
+      "s3.bucket.name": "public-transport-dataset",
+      "topics.dir": "raw",
 
-        "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
-        "storage.class": "io.confluent.connect.s3.storage.S3Storage",
+      "format.class": "io.confluent.connect.s3.format.json.JsonFormat",
+      "storage.class": "io.confluent.connect.s3.storage.S3Storage",
 
-        "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
-        "path.format": "'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH",
-        "partition.duration.ms": "3600000",
-        "timestamp.extractor": "Record",
-        "locale": "en-US",
-        "timezone": "UTC",
+      "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
+      "path.format": "'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH",
+      "partition.duration.ms": "3600000",
+      "timestamp.extractor": "Record",
+      "locale": "en-US",
+      "timezone": "UTC",
 
-        "flush.size": "1000",
-        "rotate.interval.ms": "60000",
-        "rotate.schedule.interval.ms": "300000",
+      "flush.size": "1000",
+      "rotate.interval.ms": "60000",
+      "rotate.schedule.interval.ms": "300000",
 
-        "schema.compatibility": "NONE",
-        "behavior.on.null.values": "ignore",
+      "schema.compatibility": "NONE",
+      "behavior.on.null.values": "ignore",
 
-        "key.converter": "org.apache.kafka.connect.storage.StringConverter",
-        "value.converter": "org.apache.kafka.connect.json.JsonConverter",
-        "value.converter.schemas.enable": "false"
-      }
+      "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+      "value.converter": "org.apache.kafka.connect.json.JsonConverter",
+      "value.converter.schemas.enable": "false"
     }
 ---
 apiVersion: batch/v1
@@ -73,7 +70,8 @@ spec:
 
               echo ""
               echo "Connector status:"
-              curl -s http://kafka-connect:8083/connectors/transit-s3-sink/status | head -100
+              sleep 2
+              curl -s http://kafka-connect:8083/connectors/transit-s3-sink/status
           volumeMounts:
             - name: connector-config
               mountPath: /config
