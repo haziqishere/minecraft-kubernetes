@@ -237,7 +237,8 @@ class TransitProducer:
             'vehicle_timestamp': vehicle_dict.get('timestamp'),
 
             # Metadata (enrichment at source)
-            'feed_timestamp': feed_timestamp,
+            # feed_timestamp in milliseconds for Kafka Connect partitioning
+            'feed_timestamp': feed_timestamp * 1000,
             'category': category,
             'ingestion_timestamp': datetime.now(tz=tz).isoformat(),
             'producer_version': '1.0'
