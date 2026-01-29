@@ -20,9 +20,10 @@ data:
       "partitioner.class": "io.confluent.connect.storage.partitioner.TimeBasedPartitioner",
       "path.format": "'year'=YYYY/'month'=MM/'day'=dd/'hour'=HH",
       "partition.duration.ms": "3600000",
-      "timestamp.extractor": "Record",
+      "timestamp.extractor": "RecordField",
+      "timestamp.field": "feed_timestamp",
       "locale": "en-US",
-      "timezone": "UTC",
+      "timezone": "Asia/Kuala_Lumpur",
 
       "flush.size": "1000",
       "rotate.interval.ms": "60000",
