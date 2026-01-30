@@ -372,8 +372,6 @@ def stop_spark_session(spark: SparkSession):
 
 @flow(name="public-transit-iceberg-optimized-ingest")
 def transit_iceberg_optimized_pipeline(
-    input_path: str = "s3://public-transport-dataset/raw/",
-    output_table: str = "glue_catalog.public_transport.vehicle_positions",
     enable_validation: bool = True,
     enable_deduplication: bool = True,
     min_quality_score: int = 3
@@ -402,10 +400,12 @@ def transit_iceberg_optimized_pipeline(
     config_path = Path(__file__).parent / "config.json"
     config_data = get_json_config(config_path)
     
-    warehouse_path = config_data.get("s3_warehouse_path", "s3://public-transport-dataset/warehouse/")
+    warehouse_path = config_data.get("S3_WAREHOUSE_PATH", "s3://public-transport-dataset/warehouse/")
+    raw_path = config_data.get("S3_RAW_PATH", "s3a://public-transport-dataset/raw/transit-positions")
+    table_name = config_data.get("ICEBERG_TABLE", "glue_catalog.public_transport.vehicle_positions")
     
     logger.info(f"Starting optimized transit Iceberg ingest pipeline")
-    logger.info(f"Input: {input_path} -> Output: {output_table}")
+    logger.info(f"Input: {raw_path} -> Output: {table_name}")
     logger.info(f"Validation: {enable_validation}, Deduplication: {enable_deduplication}")
     
     spark = None
@@ -417,10 +417,10 @@ def transit_iceberg_optimized_pipeline(
         spark = create_spark_session(warehouse_path)
         
         # Step 3: Ensure table exists with optimizations
-        create_iceberg_table_if_not_exists(spark, output_table, warehouse_path)
+        create_iceberg_table_if_not_exists(spark, table_name, warehouse_path)
         
         # Step 4: Read and transform data
-        df_transformed = read_and_transform_data(spark, input_path)
+        df_transformed = read_and_transform_data(spark, raw_path)
         
         # Handle case where no data is found
         if df_transformed is None:
@@ -452,7 +452,7 @@ def transit_iceberg_optimized_pipeline(
             logger.info("Skipping deduplication")
         
         # Step 7: Write to Iceberg with optimizations
-        final_count = write_to_iceberg_optimized(df_processed, output_table)
+        final_count = write_to_iceberg_optimized(df_processed, table_name)
         
         logger.info(f"Pipeline completed successfully!")
         logger.info(f"Summary: {df_transformed.count()} input -> {final_count} output")
