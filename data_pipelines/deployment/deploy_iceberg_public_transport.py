@@ -19,14 +19,5 @@ if __name__ == "__main__":
             "namespace": "prefect",
             "service_account_name": "prefect-worker",
             "image_pull_policy": "Always",
-        },  
-        parameters={  
-            "input_path": "s3://public-transport-dataset/raw/transit-positions",  
-            "output_table": "glue_catalog.public_transport.vehicle_positions",  
-            "enable_validation": True,  
-            "enable_deduplication": True,  
-            "min_quality_score": 3,  
-            "hours_back": 2,  
-            "use_hourly_partitions": True  
-        }  
+        } 
     )
