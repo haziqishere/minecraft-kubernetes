@@ -13,9 +13,9 @@ if __name__ == "__main__":
         push=False,  
         tags=["spark", "iceberg", "json", "optimized"],  
         description="Optimized JSON to Iceberg pipeline with data quality, deduplication, and advanced Iceberg features",  
-        job_variables={  
-            "namespace": "data-pipeline",  
-            "service_account_name": "spark-worker",  
-            "image_pull_policy": "Always",  
+        job_variables={
+            "namespace": "prefect",
+            "service_account_name": "prefect-worker",
+            "image_pull_policy": "Always",
         },  
     )
