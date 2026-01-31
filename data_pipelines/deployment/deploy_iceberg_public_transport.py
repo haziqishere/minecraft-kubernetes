@@ -14,8 +14,11 @@ if __name__ == "__main__":
         tags=["spark", "iceberg", "json", "optimized"],  
         description="Optimized JSON to Iceberg pipeline with data quality, deduplication, and advanced Iceberg features",  
         job_variables={
-            "namespace": "minecraft",
+            "namespace": "prefect",
             "service_account_name": "prefect-worker",
             "image_pull_policy": "Always",
+            "env": {
+                "PREFECT_API_EVENTS_ENABLED": "false",
+            },
         },  
     )
