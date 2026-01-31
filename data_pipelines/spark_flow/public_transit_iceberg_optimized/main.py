@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import pytz
 
 from prefect import task, flow, get_run_logger
+from prefect.cache_policies import NONE
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_unixtime, to_timestamp, current_timestamp,
@@ -165,7 +166,7 @@ def create_spark_session(warehouse_path: str):
         raise
 
 
-@task
+@task(cache_policy=NONE)
 def create_iceberg_table_if_not_exists(spark: SparkSession, table_name: str, warehouse_path: str):
     """Create Iceberg table with optimized schema, bucketing, and bloom filters if it doesn't exist"""
     logger = get_run_logger()
@@ -334,7 +335,7 @@ def read_and_transform_data(spark: SparkSession, input_path: str):
     return df_with_timestamps
 
 
-@task
+@task(cache_policy=NONE)
 def validate_data_quality(df):
     """Perform data quality checks and add quality flags"""
     logger = get_run_logger()
@@ -377,7 +378,7 @@ def validate_data_quality(df):
     return df_validated
 
 
-@task
+@task(cache_policy=NONE)
 def deduplicate_records(df):
     """Remove duplicate records based on vehicle_id and timestamp"""
     logger = get_run_logger()
@@ -399,7 +400,7 @@ def deduplicate_records(df):
     return df_deduped
 
 
-@task
+@task(cache_policy=NONE)
 def write_to_iceberg_optimized(df, output_table: str):
     """Write to Iceberg table with optimized partitioning and bloom filters"""
     logger = get_run_logger()
@@ -428,7 +429,7 @@ def write_to_iceberg_optimized(df, output_table: str):
     return final_count
 
 
-@task
+@task(cache_policy=NONE)
 def stop_spark_session(spark: SparkSession):
     """Stop Spark session"""
     logger = get_run_logger()
