@@ -41,10 +41,11 @@ metadata:
   labels:
     app: redis-commander
 spec:
-  type: ClusterIP
+  type: NodePort
   ports:
   - port: 8081
     targetPort: 8081
+    nodePort: 30081
     name: http
   selector:
     app: redis-commander
