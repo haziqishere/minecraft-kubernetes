@@ -14,9 +14,8 @@ curl -L https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.36
 # Hadoop AWS for Hadoop 3.3.6 (matches Spark 3.5.7)
 curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.6/hadoop-aws-3.3.6.jar -o /usr/share/aws/hadoop/hadoop-aws-3.3.6.jar
 
-# Additional Hadoop JARs to fix missing classes
-curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.3.6/hadoop-common-3.3.6.jar -o /usr/share/aws/hadoop/hadoop-common-3.3.6.jar
-curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client/3.3.6/hadoop-client-3.3.6.jar -o /usr/share/aws/hadoop/hadoop-client-3.3.6.jar
+# DO NOT download hadoop-common or hadoop-client - they're already in Spark and will cause conflicts!
+# The NoSuchMethodError is caused by having multiple versions of Hadoop classes on the classpath
 
 # ============= KAFKA SETUP =============
 echo "Setting up Kafka connector..."
@@ -43,12 +42,11 @@ curl -L https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-spark-runtime-
 curl -L https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.7.1/iceberg-aws-bundle-1.7.1.jar \
     -o /usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar
 
-# Copy ALL required JAR files to Spark's jars directory
+# Copy ONLY the required JAR files to Spark's jars directory
+# CRITICAL: Do NOT copy hadoop-common or hadoop-client as they conflict with Spark's bundled versions
 echo "Copying JARs to Spark classpath..."
 cp /usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar /opt/spark/jars/
 cp /usr/share/aws/hadoop/hadoop-aws-3.3.6.jar /opt/spark/jars/
-cp /usr/share/aws/hadoop/hadoop-common-3.3.6.jar /opt/spark/jars/
-cp /usr/share/aws/hadoop/hadoop-client-3.3.6.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar /opt/spark/jars/
 cp /usr/share/kafka/*.jar /opt/spark/jars/
@@ -76,6 +74,14 @@ spark.hadoop.fs.s3a.impl	org.apache.hadoop.fs.s3a.S3AFileSystem
 spark.hadoop.fs.s3a.aws.credentials.provider	org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider,com.amazonaws.auth.EnvironmentVariableCredentialsProvider
 spark.hadoop.fs.s3a.path.style.access	false
 spark.hadoop.fs.s3a.connection.ssl.enabled	true
+
+# CRITICAL FIX: Disable IOStatistics to prevent NoSuchMethodError
+spark.hadoop.fs.statistics.impl	
+spark.hadoop.fs.s3a.statistics.impl	org.apache.hadoop.fs.s3a.impl.EmptyS3AStatisticsContext
+spark.hadoop.fs.s3a.input.fadvise	normal
+spark.hadoop.fs.s3a.experimental.input.fadvise	normal
+spark.hadoop.fs.s3a.create.performance	false
+spark.hadoop.fs.s3a.prefetch.enabled	false
 
 # Memory Configuration
 spark.driver.memory	4g
@@ -126,13 +132,15 @@ spark.cleaner.periodicGC.interval	30min
 spark.cleaner.referenceTracking.cleanCheckpoints	true
 EOF
 
-# Create spark-env.sh with ALL required JARs
+# Create spark-env.sh with ONLY the necessary JARs
 cat > /opt/spark/conf/spark-env.sh <<'EOF'
 #!/bin/bash
 
-export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar:/usr/share/aws/hadoop/hadoop-aws-3.3.6.jar:/usr/share/aws/hadoop/hadoop-common-3.3.6.jar:/usr/share/aws/hadoop/hadoop-client-3.3.6.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
+# Only include AWS SDK and Hadoop-AWS - don't include hadoop-common or hadoop-client
+export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar:/usr/share/aws/hadoop/hadoop-aws-3.3.6.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
 EOF
 
 chmod +x /opt/spark/conf/spark-env.sh
 
 echo "Spark dependencies setup completed successfully!"
+echo "NOTE: hadoop-common and hadoop-client are NOT included to avoid JAR conflicts with Spark's bundled versions"
