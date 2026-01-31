@@ -17,8 +17,11 @@ RUN pip install --no-cache-dir -r /requirements.txt
 # Copy data pipelines code
 COPY data_pipelines /app/data_pipelines
 
-# Set working directory to data_pipelines so imports work correctly
-WORKDIR /app/data_pipelines
+# Set PYTHONPATH so imports work correctly
+ENV PYTHONPATH="/app/data_pipelines:${PYTHONPATH}"
+
+# Keep WORKDIR at /app so Prefect entrypoint paths match (data_pipelines/flow/...)
+WORKDIR /app
 
 # Default command (can be overridden by Prefect deployments)
 CMD ["python"]
