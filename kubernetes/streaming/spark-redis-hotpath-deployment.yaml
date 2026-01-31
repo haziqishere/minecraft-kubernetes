@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transit-redis-hotpath
+  namespace: streaming
+  labels:
+    app: transit-redis-hotpath
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transit-redis-hotpath
+  template:
+    metadata:
+      labels:
+        app: transit-redis-hotpath
+    spec:
+      containers:
+      - name: spark-streaming
+        image: haziqishere/spark-base:latest
+        imagePullPolicy: Always
+        command: ["spark-submit"]
+        args:
+          - "--master"
+          - "local[*]"
+          - "--conf"
+          - "spark.driver.memory=2g"
+          - "--conf"
+          - "spark.executor.memory=2g"
+          - "--conf"
+          - "spark.sql.streaming.forceDeleteTempCheckpointLocation=true"
+          - "--conf"
+          - "spark.streaming.stopGracefullyOnShutdown=true"
+          - "/opt/spark/data_pipelines/spark_flow/streaming_redis_hotpath/main.py"
+        env:
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_ACCESS_KEY_ID
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_SECRET_ACCESS_KEY
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_DEFAULT_REGION
+        - name: AWS_REGION
+          valueFrom:
+            secretKeyRef:
+              name: aws-credentials
+              key: AWS_DEFAULT_REGION
+        volumeMounts:
+        - name: kafka-certs
+          mountPath: /etc/kafka/certs
+          readOnly: true
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "3Gi"
+            cpu: "1500m"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - -f
+            - spark
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - pgrep
+            - -f
+            - spark
+          initialDelaySeconds: 60
+          periodSeconds: 15
+      volumes:
+      - name: kafka-certs
+        secret:
+          secretName: aiven-kafka-credentials
+          items:
+          - key: ca.pem
+            path: ca.pem
+          - key: service.cert
+            path: service.cert
+          - key: service.key
+            path: service.key
+      restartPolicy: Always
