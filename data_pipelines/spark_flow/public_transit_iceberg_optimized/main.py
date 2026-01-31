@@ -140,6 +140,13 @@ def create_spark_session(warehouse_path: str):
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
         .config("spark.hadoop.fs.s3a.fast.upload", "true")
         .config("spark.hadoop.fs.s3a.buffer.dir", "/tmp")
+        # Fix for Hadoop 3.3.6 S3A compatibility issues
+        .config("spark.hadoop.fs.s3a.input.fadvice", "disabled")
+        .config("spark.hadoop.fs.s3a.experimental.input.fadvise", "false")
+        .config("spark.hadoop.fs.s3a.statistics.enabled", "false")
+        .config("spark.hadoop.fs.s3a.attempts.maximum", "10")
+        .config("spark.hadoop.fs.s3a.retry.limit", "10")
+        .config("spark.hadoop.fs.s3a.retry.interval", "5000")
         # Performance optimizations
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
@@ -274,7 +281,7 @@ def build_hourly_input_path(base_path: str) -> str:
     dt = now - timedelta(hours=1)
     clean_base_path = base_path.rstrip('/')
     path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
-    
+    logger.info(f"s3 input path for hourly partitioning: {path}")
     return path
 
 
