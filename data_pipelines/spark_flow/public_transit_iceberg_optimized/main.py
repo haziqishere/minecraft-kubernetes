@@ -107,6 +107,7 @@ def create_spark_session(warehouse_path: str):
         .config("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog")
         .config("spark.sql.catalog.glue_catalog.warehouse", warehouse_path)
+        .config("spark.sql.catalog.glue_catalog.region", aws_region)
         .config("spark.hadoop.fs.s3a.access.key", credentials["AccessKeyId"]) 
         .config("spark.hadoop.fs.s3a.secret.key", credentials["SecretAccessKey"]) 
         .config("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
