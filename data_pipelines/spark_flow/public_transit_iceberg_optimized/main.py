@@ -456,6 +456,8 @@ def write_to_iceberg_optimized(df, output_table: str):
     logger.info(f"Writing {final_count} records to Iceberg table")
     
     # Write to Iceberg table with optimized partitioning and bloom filters
+    # Note: sortBy requires bucketBy, but Iceberg handles bucketing in table properties
+    # So we use partitionBy only and let Iceberg's write.distribution-mode handle optimization
     df.write \
         .format("iceberg") \
         .mode("append") \
@@ -465,7 +467,6 @@ def write_to_iceberg_optimized(df, output_table: str):
         .option("write.parquet.bloom-filter-max-bytes", "1048576") \
         .partitionBy("start_date_dt") \
         .option("write.distribution-mode", "hash") \
-        .sortBy("route_id") \
         .saveAsTable(output_table)
     
     logger.info("Successfully wrote to Iceberg table!")
