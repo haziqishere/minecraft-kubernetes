@@ -517,11 +517,3 @@ def transit_iceberg_optimized_pipeline(
     finally:
         if spark:
             stop_spark_session(spark)
-
-
-if __name__ == "__main__":
-    # For local testing - run with hourly partitions
-    transit_iceberg_optimized_pipeline(
-        use_hourly_partitions=True,
-        hours_back=2
-    )

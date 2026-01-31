@@ -16,7 +16,7 @@ if __name__ == "__main__":
         description="Optimized JSON to Iceberg pipeline with hourly scheduling, data quality, deduplication, and advanced Iceberg features",  
         schedule=CronSchedule(cron="0 * * * *", timezone="Asia/Kuala_Lumpur"),  # Run every hour at minute 0
         job_variables={
-            "namespace": "prefect",
+            "namespace": "minecraft",
             "service_account_name": "prefect-worker",
             "image_pull_policy": "Always",
             "env": {
