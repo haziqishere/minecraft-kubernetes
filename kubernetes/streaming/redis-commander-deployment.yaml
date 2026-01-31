@@ -58,6 +58,7 @@ metadata:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web
 spec:
+  ingressClassName: traefik
   rules:
   - host: redis.local  # Add to /etc/hosts: <node-ip> redis.local
     http:
