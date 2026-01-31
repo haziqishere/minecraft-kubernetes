@@ -15,6 +15,8 @@ Features:
 import os
 from pathlib import Path
 from prefect.cache_policies import NO_CACHE
+from datetime import datetime, timedelta
+import pytz
 
 from prefect import task, flow, get_run_logger
 from pyspark.sql import SparkSession
@@ -241,7 +243,7 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
     Build S3 input path for recent hourly partitions.
     
     Args:
-        base_path: Base S3 path (e.g., s3://public-transport-dataset/raw)
+        base_path: Base S3 path (e.g., s3a://public-transport-dataset/raw)
         hours_back: Number of hours to look back for data
     
     Returns:
@@ -249,9 +251,9 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
     """
     logger = get_run_logger()
     
-    from datetime import datetime, timedelta
-    
-    now = datetime.utcnow()
+    # Use Malaysia timezone (UTC+8) to match local time
+    malaysia_tz = pytz.timezone('Asia/Kuala_Lumpur')
+    now = datetime.now(malaysia_tz)
     paths = []
     
     for i in range(hours_back):
@@ -260,7 +262,7 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
         paths.append(path)
     
     input_path = ",".join(paths)
-    logger.info(f"Processing data from paths: {paths}")
+    logger.info(f"Processing data from paths (Malaysia time): {paths}")
     
     return input_path
 
