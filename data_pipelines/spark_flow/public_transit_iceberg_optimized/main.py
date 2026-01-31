@@ -14,6 +14,7 @@ Features:
 """
 import os
 from pathlib import Path
+from prefect.cache_policies import NO_CACHE
 
 from prefect import task, flow, get_run_logger
 from pyspark.sql import SparkSession
@@ -263,8 +264,7 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
     
     return input_path
 
-
-@task(cache_policy="NO_CACHE")
+@task(cache_policy=NO_CACHE, task_run_name="read-and-transform-data")
 def read_and_transform_data(spark: SparkSession, input_path: str):
     """Read JSON files from S3 and transform with flattening and timestamp conversion"""
     logger = get_run_logger()
