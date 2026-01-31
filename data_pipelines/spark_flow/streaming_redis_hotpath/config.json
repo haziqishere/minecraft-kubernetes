@@ -1,0 +1,16 @@
+{
+    "KAFKA_BOOTSTRAP_SERVERS": "kafka-my-rapidkl-student-298a.c.aivencloud.com:13066",
+    "KAFKA_TOPIC": "transit-positions",
+    "KAFKA_SSL_CA": "/etc/kafka/certs/ca.pem",
+
+    "KAFKA_SECRET_NAME": "prod-kafka-secrets",
+    "KAFKA_SASL_USERNAME_KEY": "transit-username",
+    "KAFKA_SASL_PASSWORD_KEY": "transit-password",
+
+    "REDIS_HOST": "redis-master.streaming.svc.cluster.local",
+    "REDIS_PORT": 6379,
+    "REDIS_TTL_SECONDS": 300,
+
+    "PROCESSING_INTERVAL_SECONDS": "2 seconds",
+    "TIMEZONE": "Asia/Kuala_Lumpur"
+}
