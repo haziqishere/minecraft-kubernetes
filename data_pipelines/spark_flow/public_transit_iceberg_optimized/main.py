@@ -97,23 +97,41 @@ def create_spark_session(warehouse_path: str):
     logger = get_run_logger()
     logger.info("Creating Spark session with advanced Iceberg optimizations")
 
-    # Get AWS variables
+    # Get AWS credentials and account ID
+    import boto3
     credentials = retrieve_credentials()
     aws_region = os.getenv("AWS_REGION", "ap-southeast-1")
-    
+
+    # Get AWS account ID from STS
+    sts_client = boto3.client(
+        'sts',
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials.get("SessionToken"),
+        region_name=aws_region
+    )
+    account_id = sts_client.get_caller_identity()["Account"]
+    logger.info(f"Using AWS account ID: {account_id}")
+
     spark_builder = (SparkSession.builder
         .appName("JSON to Iceberg Pipeline - Production")
+        # Iceberg extensions
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        # Glue catalog configuration
         .config("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog")
         .config("spark.sql.catalog.glue_catalog.warehouse", warehouse_path)
         .config("spark.sql.catalog.glue_catalog.region", aws_region)
-        .config("spark.hadoop.fs.s3a.access.key", credentials["AccessKeyId"]) 
-        .config("spark.hadoop.fs.s3a.secret.key", credentials["SecretAccessKey"]) 
+        .config("spark.sql.catalog.glue_catalog.glue.account-id", account_id)
+        # Iceberg S3FileIO credentials (Iceberg uses its own S3 client)
         .config("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
+        .config("spark.sql.catalog.glue_catalog.s3.access-key-id", credentials["AccessKeyId"])
+        .config("spark.sql.catalog.glue_catalog.s3.secret-access-key", credentials["SecretAccessKey"])
+        .config("spark.sql.catalog.glue_catalog.s3.region", aws_region)
+        # Hadoop S3A configuration (for reading source JSON files)
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-        # Set AWS region
+        .config("spark.hadoop.fs.s3a.access.key", credentials["AccessKeyId"])
+        .config("spark.hadoop.fs.s3a.secret.key", credentials["SecretAccessKey"])
         .config("spark.hadoop.fs.s3a.endpoint", f"s3.{aws_region}.amazonaws.com")
         # Performance optimizations
         .config("spark.sql.adaptive.enabled", "true")
