@@ -25,6 +25,7 @@ from pyspark.sql.types import StructType, StructField, StringType, DoubleType, L
 from pyspark.sql.window import Window
 
 from utilities.config_utils import get_json_config
+from utilities.aws_utils import retrieve_credentials
 
 
 def define_schema():
@@ -70,7 +71,13 @@ def validate_aws_prerequisites():
     # Check AWS credentials
     try:
         import boto3
-        sts_client = boto3.client('sts')
+        credentials = retrieve_credentials()
+        sts_client = boto3.client(
+            'sts',
+            aws_access_key_id=credentials["AccessKeyId"],
+            aws_secret_access_key=credentials["SecretAccessKey"],
+            aws_session_token=credentials["SessionToken"]
+        )
         identity = sts_client.get_caller_identity()
         logger.info(f"AWS credentials validated for account: {identity.get('Account', 'Unknown')}")
     except Exception as e:
@@ -90,7 +97,8 @@ def create_spark_session(warehouse_path: str):
     logger = get_run_logger()
     logger.info("Creating Spark session with advanced Iceberg optimizations")
 
-    # Get AWS region from environment
+    # Get AWS variables
+    credentials = retrieve_credentials()
     aws_region = os.getenv("AWS_REGION", "ap-southeast-1")
     
     spark_builder = (SparkSession.builder
@@ -99,6 +107,8 @@ def create_spark_session(warehouse_path: str):
         .config("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog")
         .config("spark.sql.catalog.glue_catalog.warehouse", warehouse_path)
+        .config("spark.hadoop.fs.s3a.access.key", credentials["ACCESS_KEY_ID"]) 
+        .config("spark.hadoop.fs.s3a.secret.key", credentials["AWS_SECRET_ACCESS_KEY"]) 
         .config("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
         .config("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
