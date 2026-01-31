@@ -130,9 +130,13 @@ def create_spark_session(warehouse_path: str):
         .config("spark.sql.catalog.glue_catalog.s3.region", aws_region)
         # Hadoop S3A configuration (for reading source JSON files)
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
+        .config("spark.hadoop.fs.s3a.path.style.access", "true")
         .config("spark.hadoop.fs.s3a.access.key", credentials["AccessKeyId"])
         .config("spark.hadoop.fs.s3a.secret.key", credentials["SecretAccessKey"])
         .config("spark.hadoop.fs.s3a.endpoint", f"s3.{aws_region}.amazonaws.com")
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
+        .config("spark.hadoop.fs.s3a.fast.upload", "true")
+        .config("spark.hadoop.fs.s3a.buffer.dir", "/tmp")
         # Performance optimizations
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
@@ -431,7 +435,7 @@ def stop_spark_session(spark: SparkSession):
 
 @flow(name="public-transit-iceberg-optimized-ingest")
 def transit_iceberg_optimized_pipeline(
-    input_path: str = "s3://public-transport-dataset/raw/transit-positions",
+    input_path: str = "s3a://public-transport-dataset/raw/transit-positions/",
     output_table: str = "glue_catalog.public_transport.vehicle_positions",
     enable_validation: bool = True,
     enable_deduplication: bool = True,
@@ -466,10 +470,14 @@ def transit_iceberg_optimized_pipeline(
     config_path = Path(__file__).parent / "config.json"
     config_data = get_json_config(config_path)
     
+    # Use config values or defaults
+    input_path = config_data.get("s3_raw_path", "s3a://public-transport-dataset/raw/transit-positions/")
     warehouse_path = config_data.get("s3_warehouse_path", "s3://public-transport-dataset/warehouse/")
+    output_table = config_data.get("iceberg_table", "glue_catalog.public_transport.vehicle_positions")
     
     logger.info(f"Starting optimized transit Iceberg ingest pipeline")
     logger.info(f"Base Input: {input_path} -> Output: {output_table}")
+    logger.info(f"Warehouse: {warehouse_path}")
     logger.info(f"Validation: {enable_validation}, Deduplication: {enable_deduplication}")
     logger.info(f"Hourly partitions: {use_hourly_partitions}, Hours back: {hours_back}")
     
