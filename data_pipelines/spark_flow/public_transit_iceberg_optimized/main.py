@@ -116,8 +116,24 @@ def create_spark_session(warehouse_path: str):
     )
     account_id = sts_client.get_caller_identity()["Account"]
 
+    # Build JAR paths list - these JARs are already installed by setup script
+    jar_paths = [
+        "/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar",
+        "/usr/share/aws/hadoop/hadoop-aws-3.3.6.jar",
+        "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar",
+        "/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar"
+    ]
+    
+    # Verify JARs exist
+    missing_jars = [jar for jar in jar_paths if not os.path.exists(jar)]
+    if missing_jars:
+        logger.warning(f"Missing JARs: {missing_jars}")
+        logger.info("JARs should be installed by setup script or available in Spark classpath")
+    
     spark_builder = (SparkSession.builder
         .appName("JSON to Iceberg Pipeline - Production")
+        # Add JARs to Spark session (alternative to spark.jars.packages for pre-downloaded JARs)
+        .config("spark.jars", ",".join(jar_paths))
         # Iceberg extensions
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         # Glue catalog configuration
@@ -140,13 +156,18 @@ def create_spark_session(warehouse_path: str):
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
         .config("spark.hadoop.fs.s3a.fast.upload", "true")
         .config("spark.hadoop.fs.s3a.buffer.dir", "/tmp")
-        # Fix for Hadoop 3.3.6 S3A compatibility issues
-        .config("spark.hadoop.fs.s3a.input.fadvice", "disabled")
-        .config("spark.hadoop.fs.s3a.experimental.input.fadvise", "false")
-        .config("spark.hadoop.fs.s3a.statistics.enabled", "false")
+        # CRITICAL FIX: Disable problematic S3A features that cause NoSuchMethodError
+        .config("spark.hadoop.fs.s3a.input.fadvise", "normal")
+        .config("spark.hadoop.fs.s3a.experimental.input.fadvise", "normal")
+        # Disable IOStatistics to avoid the invokeTrackingDuration error
+        .config("spark.hadoop.fs.statistics.impl", "")
+        .config("spark.hadoop.fs.s3a.create.performance", "false")
+        .config("spark.hadoop.fs.s3a.prefetch.enabled", "false")
+        # Connection and retry settings
         .config("spark.hadoop.fs.s3a.attempts.maximum", "10")
         .config("spark.hadoop.fs.s3a.retry.limit", "10")
         .config("spark.hadoop.fs.s3a.retry.interval", "5000")
+        .config("spark.hadoop.fs.s3a.connection.maximum", "100")
         # Performance optimizations
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
@@ -173,6 +194,10 @@ def create_spark_session(warehouse_path: str):
     try:
         spark = spark_builder.getOrCreate()
         logger.info("Spark session created successfully")
+        
+        # Log Spark version and configuration
+        logger.info(f"Spark version: {spark.version}")
+        logger.info(f"Hadoop version: {spark.sparkContext._jvm.org.apache.hadoop.util.VersionInfo.getVersion()}")
         
         # Test Glue catalog connection
         try:
@@ -306,8 +331,20 @@ def read_and_transform_data(spark: SparkSession, input_path: str):
             return None
             
     except Exception as e:
-        logger.error(f"Failed to read data from S3: {str(e)}")
-        raise ValueError(f"S3 read failed. Please check S3 bucket existence and permissions. Error: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Failed to read data from S3: {error_msg}")
+        
+        # Provide more specific error messages
+        if "NoSuchMethodError" in error_msg and "IOStatisticsBinding" in error_msg:
+            raise ValueError(
+                "Hadoop library version mismatch detected. "
+                "This is a compatibility issue between Hadoop and AWS SDK versions. "
+                f"Original error: {error_msg}"
+            )
+        elif "AccessDenied" in error_msg or "NoSuchBucket" in error_msg:
+            raise ValueError(f"S3 access denied or bucket not found. Check bucket permissions and existence. Error: {error_msg}")
+        else:
+            raise ValueError(f"S3 read failed. Error: {error_msg}")
     
     # Flatten the nested structure
     df_flattened = df_raw.select(
