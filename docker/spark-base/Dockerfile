@@ -1,4 +1,4 @@
-FROM spark:3.5.1-python3
+FROM spark:3.5.7-python3
 
 USER root
 
@@ -6,7 +6,8 @@ RUN apt-get update && apt-get install -y sudo curl git unzip python3-pip && \
     rm -rf /var/lib/apt/lists/*
 
 COPY docker/spark-base/requirements.txt /tmp/requirements.txt
-RUN pip3 install --no-cache-dir -r /tmp/requirements.txt
+RUN pip3 install --upgrade pip && \
+    pip3 install --no-cache-dir -r /tmp/requirements.txt
 
 COPY docker/spark-base/spark-dependencies.sh /tmp/spark-dependencies.sh                                                                                                                        
 RUN chmod +x /tmp/spark-dependencies.sh && \                                                                                                                                 
