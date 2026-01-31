@@ -111,7 +111,6 @@ def create_spark_session(warehouse_path: str):
         region_name=aws_region
     )
     account_id = sts_client.get_caller_identity()["Account"]
-    logger.info(f"Using AWS account ID: {account_id}")
 
     spark_builder = (SparkSession.builder
         .appName("JSON to Iceberg Pipeline - Production")

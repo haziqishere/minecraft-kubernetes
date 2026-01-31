@@ -21,6 +21,8 @@ if __name__ == "__main__":
             "image_pull_policy": "Always",
             "env": {
                 "PREFECT_API_EVENTS_ENABLED": "false",
+                "AWS_REGION": "ap-southeast-1",
+                "AWS_DEFAULT_REGION": "ap-southeast-1",
             },
         },  
     )
