@@ -78,7 +78,7 @@ def validate_aws_prerequisites():
         raise ValueError("AWS credentials not properly configured. Please configure AWS CLI or environment variables.")
     
     # Check AWS region
-    aws_region = os.getenv("AWS_REGION", "us-east-1")
+    aws_region = os.getenv("AWS_REGION", "ap-southeast-1")
     logger.info(f"Using AWS region: {aws_region}")
     
     return True
@@ -91,7 +91,7 @@ def create_spark_session(warehouse_path: str):
     logger.info("Creating Spark session with advanced Iceberg optimizations")
 
     # Get AWS region from environment
-    aws_region = os.getenv("AWS_REGION", "us-east-1")
+    aws_region = os.getenv("AWS_REGION", "ap-southeast-1")
     
     spark_builder = (SparkSession.builder
         .appName("JSON to Iceberg Pipeline - Production")
@@ -198,6 +198,36 @@ def create_iceberg_table_if_not_exists(spark: SparkSession, table_name: str, war
     except Exception as e:
         logger.error(f"Failed to create Iceberg table: {str(e)}")
         raise ValueError(f"Iceberg table creation failed. Please check S3 permissions and Lake Formation setup. Error: {str(e)}")
+
+
+@task
+def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
+    """
+    Build S3 input path for recent hourly partitions.
+    
+    Args:
+        base_path: Base S3 path (e.g., s3://public-transport-dataset/raw)
+        hours_back: Number of hours to look back for data
+    
+    Returns:
+        S3 path pattern for reading data
+    """
+    logger = get_run_logger()
+    
+    from datetime import datetime, timedelta
+    
+    now = datetime.utcnow()
+    paths = []
+    
+    for i in range(hours_back):
+        dt = now - timedelta(hours=i)
+        path = f"{base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
+        paths.append(path)
+    
+    input_path = ",".join(paths)
+    logger.info(f"Processing data from paths: {paths}")
+    
+    return input_path
 
 
 @task
@@ -372,9 +402,13 @@ def stop_spark_session(spark: SparkSession):
 
 @flow(name="public-transit-iceberg-optimized-ingest")
 def transit_iceberg_optimized_pipeline(
+    input_path: str = "s3://public-transport-dataset/raw/transit-positions",
+    output_table: str = "glue_catalog.public_transport.vehicle_positions",
     enable_validation: bool = True,
     enable_deduplication: bool = True,
-    min_quality_score: int = 3
+    min_quality_score: int = 3,
+    hours_back: int = 2,
+    use_hourly_partitions: bool = True
 ):
     """
     Optimized pipeline for ingesting public transit data to Iceberg with advanced features.
@@ -386,13 +420,16 @@ def transit_iceberg_optimized_pipeline(
     - Optimized Iceberg table with bucketing and bloom filters
     - Performance optimizations
     - Graceful error handling for missing AWS resources
+    - Hourly partition support for scheduled runs
     
     Args:
-        input_path: S3 path to JSON files
+        input_path: Base S3 path to JSON files
         output_table: Fully qualified Iceberg table name
         enable_validation: Whether to run data quality checks
         enable_deduplication: Whether to remove duplicates
         min_quality_score: Minimum quality score (0-4) to include record
+        hours_back: Number of hours to look back for data (for hourly processing)
+        use_hourly_partitions: Whether to use hourly partition paths
     """
     logger = get_run_logger()
     
@@ -400,13 +437,12 @@ def transit_iceberg_optimized_pipeline(
     config_path = Path(__file__).parent / "config.json"
     config_data = get_json_config(config_path)
     
-    warehouse_path = config_data.get("S3_WAREHOUSE_PATH", "s3://public-transport-dataset/warehouse/")
-    raw_path = config_data.get("S3_RAW_PATH", "s3a://public-transport-dataset/raw/transit-positions")
-    table_name = config_data.get("ICEBERG_TABLE", "glue_catalog.public_transport.vehicle_positions")
+    warehouse_path = config_data.get("s3_warehouse_path", "s3://public-transport-dataset/warehouse/")
     
     logger.info(f"Starting optimized transit Iceberg ingest pipeline")
-    logger.info(f"Input: {raw_path} -> Output: {table_name}")
+    logger.info(f"Base Input: {input_path} -> Output: {output_table}")
     logger.info(f"Validation: {enable_validation}, Deduplication: {enable_deduplication}")
+    logger.info(f"Hourly partitions: {use_hourly_partitions}, Hours back: {hours_back}")
     
     spark = None
     try:
@@ -417,10 +453,16 @@ def transit_iceberg_optimized_pipeline(
         spark = create_spark_session(warehouse_path)
         
         # Step 3: Ensure table exists with optimizations
-        create_iceberg_table_if_not_exists(spark, table_name, warehouse_path)
+        create_iceberg_table_if_not_exists(spark, output_table, warehouse_path)
         
-        # Step 4: Read and transform data
-        df_transformed = read_and_transform_data(spark, raw_path)
+        # Step 4: Build input path (hourly or regular)
+        if use_hourly_partitions:
+            actual_input_path = build_hourly_input_path(input_path, hours_back)
+        else:
+            actual_input_path = input_path
+        
+        # Step 5: Read and transform data
+        df_transformed = read_and_transform_data(spark, actual_input_path)
         
         # Handle case where no data is found
         if df_transformed is None:
@@ -433,7 +475,7 @@ def transit_iceberg_optimized_pipeline(
                 "message": "No data found at input path"
             }
         
-        # Step 5: Apply data quality checks if enabled
+        # Step 6: Apply data quality checks if enabled
         if enable_validation:
             df_processed = validate_data_quality(df_transformed)
             
@@ -445,14 +487,14 @@ def transit_iceberg_optimized_pipeline(
             df_processed = df_transformed
             logger.info("Skipping data quality validation")
         
-        # Step 6: Apply deduplication if enabled
+        # Step 7: Apply deduplication if enabled
         if enable_deduplication:
             df_processed = deduplicate_records(df_processed)
         else:
             logger.info("Skipping deduplication")
         
-        # Step 7: Write to Iceberg with optimizations
-        final_count = write_to_iceberg_optimized(df_processed, table_name)
+        # Step 8: Write to Iceberg with optimizations
+        final_count = write_to_iceberg_optimized(df_processed, output_table)
         
         logger.info(f"Pipeline completed successfully!")
         logger.info(f"Summary: {df_transformed.count()} input -> {final_count} output")
@@ -478,5 +520,8 @@ def transit_iceberg_optimized_pipeline(
 
 
 if __name__ == "__main__":
-    # For local testing
-    transit_iceberg_optimized_pipeline()
+    # For local testing - run with hourly partitions
+    transit_iceberg_optimized_pipeline(
+        use_hourly_partitions=True,
+        hours_back=2
+    )
