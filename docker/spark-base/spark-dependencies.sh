@@ -14,6 +14,10 @@ curl -L https://repo1.maven.org/maven2/com/amazonaws/aws-java-sdk-bundle/1.12.36
 # Hadoop AWS for Hadoop 3.3.6 (matches Spark 3.5.7)
 curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-aws/3.3.6/hadoop-aws-3.3.6.jar -o /usr/share/aws/hadoop/hadoop-aws-3.3.6.jar
 
+# Additional Hadoop JARs to fix missing classes
+curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-common/3.3.6/hadoop-common-3.3.6.jar -o /usr/share/aws/hadoop/hadoop-common-3.3.6.jar
+curl -L https://repo1.maven.org/maven2/org/apache/hadoop/hadoop-client/3.3.6/hadoop-client-3.3.6.jar -o /usr/share/aws/hadoop/hadoop-client-3.3.6.jar
+
 # ============= KAFKA SETUP =============
 echo "Setting up Kafka connector..."
 
@@ -43,6 +47,8 @@ curl -L https://repo1.maven.org/maven2/org/apache/iceberg/iceberg-aws-bundle/1.7
 echo "Copying JARs to Spark classpath..."
 cp /usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar /opt/spark/jars/
 cp /usr/share/aws/hadoop/hadoop-aws-3.3.6.jar /opt/spark/jars/
+cp /usr/share/aws/hadoop/hadoop-common-3.3.6.jar /opt/spark/jars/
+cp /usr/share/aws/hadoop/hadoop-client-3.3.6.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar /opt/spark/jars/
 cp /usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar /opt/spark/jars/
 cp /usr/share/kafka/*.jar /opt/spark/jars/
@@ -124,7 +130,7 @@ EOF
 cat > /opt/spark/conf/spark-env.sh <<'EOF'
 #!/bin/bash
 
-export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar:/usr/share/aws/hadoop/hadoop-aws-3.3.6.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
+export SPARK_CLASSPATH=$SPARK_CLASSPATH:/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar:/usr/share/aws/hadoop/hadoop-aws-3.3.6.jar:/usr/share/aws/hadoop/hadoop-common-3.3.6.jar:/usr/share/aws/hadoop/hadoop-client-3.3.6.jar:/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar:/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar:/usr/share/kafka/*
 EOF
 
 chmod +x /opt/spark/conf/spark-env.sh
