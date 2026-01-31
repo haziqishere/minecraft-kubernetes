@@ -39,6 +39,7 @@ mmh3==5.2.0
 nest-asyncio==1.6.0
 numpy==2.2.6
 packaging==23.2
+prefect==3.6.8
 pandas==2.3.3
 parso==0.8.5
 pexpect==4.9.0

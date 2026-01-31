@@ -19,5 +19,8 @@ if __name__ == "__main__":
             "namespace": "prefect",
             "service_account_name": "prefect-worker",
             "image_pull_policy": "Always",
-        } 
+            "env": {
+                "PREFECT_API_EVENTS_ENABLED": "false",
+            },
+        },  
     )
