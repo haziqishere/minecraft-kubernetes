@@ -116,24 +116,12 @@ def create_spark_session(warehouse_path: str):
     )
     account_id = sts_client.get_caller_identity()["Account"]
 
-    # Build JAR paths list - these JARs are already installed by setup script
-    jar_paths = [
-        "/usr/share/aws/aws-java-sdk/aws-java-sdk-bundle-1.12.367.jar",
-        "/usr/share/aws/hadoop/hadoop-aws-3.3.6.jar",
-        "/usr/share/aws/iceberg/lib/iceberg-spark3-runtime.jar",
-        "/usr/share/aws/iceberg/lib/iceberg-aws-bundle.jar"
-    ]
-    
-    # Verify JARs exist
-    missing_jars = [jar for jar in jar_paths if not os.path.exists(jar)]
-    if missing_jars:
-        logger.warning(f"Missing JARs: {missing_jars}")
-        logger.info("JARs should be installed by setup script or available in Spark classpath")
+    # JARs are already in /opt/spark/jars/ and configured in spark-defaults.conf
+    # We don't explicitly load them here to avoid JAR conflicts
+    # The setup script has already placed them in the Spark classpath
     
     spark_builder = (SparkSession.builder
         .appName("JSON to Iceberg Pipeline - Production")
-        # Add JARs to Spark session (alternative to spark.jars.packages for pre-downloaded JARs)
-        .config("spark.jars", ",".join(jar_paths))
         # Iceberg extensions
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
         # Glue catalog configuration
