@@ -1,4 +1,4 @@
-FROM spark:4.0.1-python3
+FROM spark:3.5.1-python3
 
 USER root
 
