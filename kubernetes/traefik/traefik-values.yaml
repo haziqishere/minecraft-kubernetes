@@ -36,6 +36,7 @@ api:
   dashboard: true
 additionalArguments:
   - "--api.insecure=true"
+  - "--providers.kubernetesingress.ingressendpoint.hostname=traefik.local"
 
 ingressRoute:
   dashboard:
