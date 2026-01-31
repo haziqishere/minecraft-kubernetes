@@ -14,8 +14,12 @@ Features:
 """
 import os
 from pathlib import Path
+from prefect.cache_policies import NO_CACHE
+from datetime import datetime, timedelta
+import pytz
 
 from prefect import task, flow, get_run_logger
+from prefect.cache_policies import NONE
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_unixtime, to_timestamp, current_timestamp,
@@ -97,31 +101,91 @@ def create_spark_session(warehouse_path: str):
     logger = get_run_logger()
     logger.info("Creating Spark session with advanced Iceberg optimizations")
 
-    # Get AWS variables
+    # Get AWS credentials and account ID
+    import boto3
     credentials = retrieve_credentials()
     aws_region = os.getenv("AWS_REGION", "ap-southeast-1")
+
+    # Get AWS account ID from STS
+    sts_client = boto3.client(
+        'sts',
+        aws_access_key_id=credentials["AccessKeyId"],
+        aws_secret_access_key=credentials["SecretAccessKey"],
+        aws_session_token=credentials.get("SessionToken"),
+        region_name=aws_region
+    )
+    account_id = sts_client.get_caller_identity()["Account"]
+
+    # JARs are already in /opt/spark/jars/ and configured in spark-defaults.conf
+    # We don't explicitly load them here to avoid JAR conflicts
+    # The setup script has already placed them in the Spark classpath
     
     spark_builder = (SparkSession.builder
         .appName("JSON to Iceberg Pipeline - Production")
+        # Iceberg extensions
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions")
+        # Glue catalog configuration
         .config("spark.sql.catalog.glue_catalog", "org.apache.iceberg.spark.SparkCatalog")
         .config("spark.sql.catalog.glue_catalog.catalog-impl", "org.apache.iceberg.aws.glue.GlueCatalog")
         .config("spark.sql.catalog.glue_catalog.warehouse", warehouse_path)
-        .config("spark.hadoop.fs.s3a.access.key", credentials["ACCESS_KEY_ID"]) 
-        .config("spark.hadoop.fs.s3a.secret.key", credentials["AWS_SECRET_ACCESS_KEY"]) 
+        .config("spark.sql.catalog.glue_catalog.region", aws_region)
+        .config("spark.sql.catalog.glue_catalog.glue.account-id", account_id)
+        # Iceberg S3FileIO credentials (Iceberg uses its own S3 client)
         .config("spark.sql.catalog.glue_catalog.io-impl", "org.apache.iceberg.aws.s3.S3FileIO")
+        .config("spark.sql.catalog.glue_catalog.s3.access-key-id", credentials["AccessKeyId"])
+        .config("spark.sql.catalog.glue_catalog.s3.secret-access-key", credentials["SecretAccessKey"])
+        .config("spark.sql.catalog.glue_catalog.s3.region", aws_region)
+        # Hadoop S3A configuration (for reading source JSON files)
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("spark.hadoop.fs.s3a.aws.credentials.provider", "com.amazonaws.auth.DefaultAWSCredentialsProviderChain")
-        # Set AWS region
+        .config("spark.hadoop.fs.s3a.path.style.access", "false")
+        .config("spark.hadoop.fs.s3a.access.key", credentials["AccessKeyId"])
+        .config("spark.hadoop.fs.s3a.secret.key", credentials["SecretAccessKey"])
         .config("spark.hadoop.fs.s3a.endpoint", f"s3.{aws_region}.amazonaws.com")
+        .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
+        .config("spark.hadoop.fs.s3a.fast.upload", "true")
+        .config("spark.hadoop.fs.s3a.buffer.dir", "/tmp")
+        # CRITICAL FIX: Disable problematic S3A features that cause NoSuchMethodError
+        .config("spark.hadoop.fs.s3a.input.fadvise", "normal")
+        .config("spark.hadoop.fs.s3a.experimental.input.fadvise", "normal")
+        # Disable IOStatistics to avoid the invokeTrackingDuration error
+        .config("spark.hadoop.fs.statistics.impl", "")
+        .config("spark.hadoop.fs.s3a.create.performance", "false")
+        .config("spark.hadoop.fs.s3a.prefetch.enabled", "false")
+        # Connection and retry settings
+        .config("spark.hadoop.fs.s3a.attempts.maximum", "10")
+        .config("spark.hadoop.fs.s3a.retry.limit", "10")
+        .config("spark.hadoop.fs.s3a.retry.interval", "5000")
+        .config("spark.hadoop.fs.s3a.connection.maximum", "100")
         # Performance optimizations
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
     )
-    
+
+    # Add session token configuration if using temporary credentials
+    session_token = credentials.get("SessionToken")
+    if session_token:
+        logger.info("Using temporary credentials with session token")
+        spark_builder = (spark_builder
+            # S3A session token
+            .config("spark.hadoop.fs.s3a.session.token", session_token)
+            .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+            # Iceberg S3FileIO session token
+            .config("spark.sql.catalog.glue_catalog.s3.session-token", session_token)
+        )
+    else:
+        logger.info("Using static credentials (no session token)")
+        spark_builder = spark_builder.config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+        )
+
     try:
         spark = spark_builder.getOrCreate()
         logger.info("Spark session created successfully")
+        
+        # Log Spark version and configuration
+        logger.info(f"Spark version: {spark.version}")
+        logger.info(f"Hadoop version: {spark.sparkContext._jvm.org.apache.hadoop.util.VersionInfo.getVersion()}")
         
         # Test Glue catalog connection
         try:
@@ -138,7 +202,7 @@ def create_spark_session(warehouse_path: str):
         raise
 
 
-@task
+@task(cache_policy=NONE)
 def create_iceberg_table_if_not_exists(spark: SparkSession, table_name: str, warehouse_path: str):
     """Create Iceberg table with optimized schema, bucketing, and bloom filters if it doesn't exist"""
     logger = get_run_logger()
@@ -211,36 +275,30 @@ def create_iceberg_table_if_not_exists(spark: SparkSession, table_name: str, war
 
 
 @task
-def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
+def build_hourly_input_path(base_path: str) -> str:
     """
     Build S3 input path for recent hourly partitions.
     
     Args:
-        base_path: Base S3 path (e.g., s3://public-transport-dataset/raw)
-        hours_back: Number of hours to look back for data
+        base_path: Base S3 path (e.g., s3a://public-transport-dataset/raw)
     
     Returns:
         S3 path pattern for reading data
     """
     logger = get_run_logger()
     
-    from datetime import datetime, timedelta
-    
-    now = datetime.utcnow()
-    paths = []
-    
-    for i in range(hours_back):
-        dt = now - timedelta(hours=i)
-        path = f"{base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
-        paths.append(path)
-    
-    input_path = ",".join(paths)
-    logger.info(f"Processing data from paths: {paths}")
-    
-    return input_path
+    # Use Malaysia timezone (UTC+8) to match local time
+    malaysia_tz = pytz.timezone('Asia/Kuala_Lumpur')
+    now = datetime.now(malaysia_tz)
+
+    dt = now - timedelta(hours=1)
+    clean_base_path = base_path.rstrip('/')
+    path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
+    logger.info(f"s3 input path for hourly partitioning: {path}")
+    return path
 
 
-@task
+@task(cache_policy=NO_CACHE, task_run_name="read-and-transform-data")
 def read_and_transform_data(spark: SparkSession, input_path: str):
     """Read JSON files from S3 and transform with flattening and timestamp conversion"""
     logger = get_run_logger()
@@ -261,8 +319,20 @@ def read_and_transform_data(spark: SparkSession, input_path: str):
             return None
             
     except Exception as e:
-        logger.error(f"Failed to read data from S3: {str(e)}")
-        raise ValueError(f"S3 read failed. Please check S3 bucket existence and permissions. Error: {str(e)}")
+        error_msg = str(e)
+        logger.error(f"Failed to read data from S3: {error_msg}")
+        
+        # Provide more specific error messages
+        if "NoSuchMethodError" in error_msg and "IOStatisticsBinding" in error_msg:
+            raise ValueError(
+                "Hadoop library version mismatch detected. "
+                "This is a compatibility issue between Hadoop and AWS SDK versions. "
+                f"Original error: {error_msg}"
+            )
+        elif "AccessDenied" in error_msg or "NoSuchBucket" in error_msg:
+            raise ValueError(f"S3 access denied or bucket not found. Check bucket permissions and existence. Error: {error_msg}")
+        else:
+            raise ValueError(f"S3 read failed. Error: {error_msg}")
     
     # Flatten the nested structure
     df_flattened = df_raw.select(
@@ -308,7 +378,7 @@ def read_and_transform_data(spark: SparkSession, input_path: str):
     return df_with_timestamps
 
 
-@task
+@task(cache_policy=NONE)
 def validate_data_quality(df):
     """Perform data quality checks and add quality flags"""
     logger = get_run_logger()
@@ -351,7 +421,7 @@ def validate_data_quality(df):
     return df_validated
 
 
-@task
+@task(cache_policy=NONE)
 def deduplicate_records(df):
     """Remove duplicate records based on vehicle_id and timestamp"""
     logger = get_run_logger()
@@ -373,7 +443,7 @@ def deduplicate_records(df):
     return df_deduped
 
 
-@task
+@task(cache_policy=NONE)
 def write_to_iceberg_optimized(df, output_table: str):
     """Write to Iceberg table with optimized partitioning and bloom filters"""
     logger = get_run_logger()
@@ -386,6 +456,8 @@ def write_to_iceberg_optimized(df, output_table: str):
     logger.info(f"Writing {final_count} records to Iceberg table")
     
     # Write to Iceberg table with optimized partitioning and bloom filters
+    # Note: sortBy requires bucketBy, but Iceberg handles bucketing in table properties
+    # So we use partitionBy only and let Iceberg's write.distribution-mode handle optimization
     df.write \
         .format("iceberg") \
         .mode("append") \
@@ -393,16 +465,14 @@ def write_to_iceberg_optimized(df, output_table: str):
         .option("write.metadata.compression-codec", "gzip") \
         .option("write.parquet.bloom-filter-enabled.column.category", "true") \
         .option("write.parquet.bloom-filter-max-bytes", "1048576") \
-        .partitionBy("start_date_dt") \
         .option("write.distribution-mode", "hash") \
-        .sortBy("route_id") \
         .saveAsTable(output_table)
     
     logger.info("Successfully wrote to Iceberg table!")
     return final_count
 
 
-@task
+@task(cache_policy=NONE)
 def stop_spark_session(spark: SparkSession):
     """Stop Spark session"""
     logger = get_run_logger()
@@ -412,12 +482,11 @@ def stop_spark_session(spark: SparkSession):
 
 @flow(name="public-transit-iceberg-optimized-ingest")
 def transit_iceberg_optimized_pipeline(
-    input_path: str = "s3://public-transport-dataset/raw/transit-positions",
+    input_path: str = "s3a://public-transport-dataset/raw/transit-positions/",
     output_table: str = "glue_catalog.public_transport.vehicle_positions",
     enable_validation: bool = True,
     enable_deduplication: bool = True,
     min_quality_score: int = 3,
-    hours_back: int = 2,
     use_hourly_partitions: bool = True
 ):
     """
@@ -438,7 +507,6 @@ def transit_iceberg_optimized_pipeline(
         enable_validation: Whether to run data quality checks
         enable_deduplication: Whether to remove duplicates
         min_quality_score: Minimum quality score (0-4) to include record
-        hours_back: Number of hours to look back for data (for hourly processing)
         use_hourly_partitions: Whether to use hourly partition paths
     """
     logger = get_run_logger()
@@ -447,12 +515,15 @@ def transit_iceberg_optimized_pipeline(
     config_path = Path(__file__).parent / "config.json"
     config_data = get_json_config(config_path)
     
-    warehouse_path = config_data.get("s3_warehouse_path", "s3://public-transport-dataset/warehouse/")
+    # Use config values or defaults
+    input_path = config_data.get("s3_raw_path", "s3a://public-transport-dataset/raw/transit-positions/")
+    warehouse_path = config_data.get("s3_warehouse_path", "s3a://public-transport-dataset/warehouse/")
+    output_table = config_data.get("iceberg_table", "glue_catalog.public_transport.vehicle_positions")
     
     logger.info(f"Starting optimized transit Iceberg ingest pipeline")
     logger.info(f"Base Input: {input_path} -> Output: {output_table}")
+    logger.info(f"Warehouse: {warehouse_path}")
     logger.info(f"Validation: {enable_validation}, Deduplication: {enable_deduplication}")
-    logger.info(f"Hourly partitions: {use_hourly_partitions}, Hours back: {hours_back}")
     
     spark = None
     try:
@@ -467,7 +538,7 @@ def transit_iceberg_optimized_pipeline(
         
         # Step 4: Build input path (hourly or regular)
         if use_hourly_partitions:
-            actual_input_path = build_hourly_input_path(input_path, hours_back)
+            actual_input_path = build_hourly_input_path(input_path)
         else:
             actual_input_path = input_path
         

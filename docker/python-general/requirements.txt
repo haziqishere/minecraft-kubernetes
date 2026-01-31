@@ -10,3 +10,4 @@ kubernetes>=28.0.0
 # Utilities
 python-dateutil>=2.8.0
 pyyaml>=6.0.0
+pytz>=2023.3

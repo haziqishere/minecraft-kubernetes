@@ -3,7 +3,7 @@ from pathlib import Path
 # from prefect.schedules import CronSchedule
   
 sys.path.append(str(Path(__file__).parent.parent))  
-from flow.public_transit_iceberg_optimized.main import transit_iceberg_optimized_pipeline  
+from spark_flow.public_transit_iceberg_optimized.main import transit_iceberg_optimized_pipeline  
   
 if __name__ == "__main__":  
     transit_iceberg_optimized_pipeline.deploy(  
@@ -21,6 +21,8 @@ if __name__ == "__main__":
             "image_pull_policy": "Always",
             "env": {
                 "PREFECT_API_EVENTS_ENABLED": "false",
+                "AWS_REGION": "ap-southeast-1",
+                "AWS_DEFAULT_REGION": "ap-southeast-1",
             },
         },  
     )
