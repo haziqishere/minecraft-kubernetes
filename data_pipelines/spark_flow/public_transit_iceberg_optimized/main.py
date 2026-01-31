@@ -293,8 +293,7 @@ def build_hourly_input_path(base_path: str) -> str:
 
     dt = now - timedelta(hours=1)
     clean_base_path = base_path.rstrip('/')
-    # path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
-    path = f"{clean_base_path}/year={dt.year}/month=01/day=31/hour=23/"
+    path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
     logger.info(f"s3 input path for hourly partitioning: {path}")
     return path
 
