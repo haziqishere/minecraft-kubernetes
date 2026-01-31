@@ -255,13 +255,12 @@ def create_iceberg_table_if_not_exists(spark: SparkSession, table_name: str, war
 
 
 @task
-def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
+def build_hourly_input_path(base_path: str) -> str:
     """
     Build S3 input path for recent hourly partitions.
     
     Args:
         base_path: Base S3 path (e.g., s3a://public-transport-dataset/raw)
-        hours_back: Number of hours to look back for data
     
     Returns:
         S3 path pattern for reading data
@@ -271,18 +270,13 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
     # Use Malaysia timezone (UTC+8) to match local time
     malaysia_tz = pytz.timezone('Asia/Kuala_Lumpur')
     now = datetime.now(malaysia_tz)
-    paths = []
+
+    dt = now - timedelta(hours=1)
+    clean_base_path = base_path.rstrip('/')
+    path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
     
-    for i in range(hours_back):
-        dt = now - timedelta(hours=i)
-        clean_base_path = base_path.rstrip('/')
-        path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
-        paths.append(path)
-    
-    input_path = ",".join(paths)
-    logger.info(f"Processing data from paths (Malaysia time): {paths}")
-    
-    return input_path
+    return path
+
 
 @task(cache_policy=NO_CACHE, task_run_name="read-and-transform-data")
 def read_and_transform_data(spark: SparkSession, input_path: str):
@@ -461,7 +455,6 @@ def transit_iceberg_optimized_pipeline(
     enable_validation: bool = True,
     enable_deduplication: bool = True,
     min_quality_score: int = 3,
-    hours_back: int = 2,
     use_hourly_partitions: bool = True
 ):
     """
@@ -482,7 +475,6 @@ def transit_iceberg_optimized_pipeline(
         enable_validation: Whether to run data quality checks
         enable_deduplication: Whether to remove duplicates
         min_quality_score: Minimum quality score (0-4) to include record
-        hours_back: Number of hours to look back for data (for hourly processing)
         use_hourly_partitions: Whether to use hourly partition paths
     """
     logger = get_run_logger()
@@ -492,7 +484,7 @@ def transit_iceberg_optimized_pipeline(
     config_data = get_json_config(config_path)
     
     # Use config values or defaults
-    input_path = config_data.get("s3_raw_path", "s3://public-transport-dataset/raw/transit-positions/")
+    input_path = config_data.get("s3_raw_path", "s3a://public-transport-dataset/raw/transit-positions/")
     warehouse_path = config_data.get("s3_warehouse_path", "s3a://public-transport-dataset/warehouse/")
     output_table = config_data.get("iceberg_table", "glue_catalog.public_transport.vehicle_positions")
     
@@ -500,7 +492,6 @@ def transit_iceberg_optimized_pipeline(
     logger.info(f"Base Input: {input_path} -> Output: {output_table}")
     logger.info(f"Warehouse: {warehouse_path}")
     logger.info(f"Validation: {enable_validation}, Deduplication: {enable_deduplication}")
-    logger.info(f"Hourly partitions: {use_hourly_partitions}, Hours back: {hours_back}")
     
     spark = None
     try:
@@ -515,7 +506,7 @@ def transit_iceberg_optimized_pipeline(
         
         # Step 4: Build input path (hourly or regular)
         if use_hourly_partitions:
-            actual_input_path = build_hourly_input_path(input_path, hours_back)
+            actual_input_path = build_hourly_input_path(input_path)
         else:
             actual_input_path = input_path
         
