@@ -19,6 +19,7 @@ from datetime import datetime, timedelta
 import pytz
 
 from prefect import task, flow, get_run_logger
+from prefect.cache_policies import NONE
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import (
     col, from_unixtime, to_timestamp, current_timestamp,
@@ -132,20 +133,36 @@ def create_spark_session(warehouse_path: str):
         .config("spark.sql.catalog.glue_catalog.s3.region", aws_region)
         # Hadoop S3A configuration (for reading source JSON files)
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
-        .config("spark.hadoop.fs.s3a.path.style.access", "false")  # AWS SDK v1 uses path-style=false
+        .config("spark.hadoop.fs.s3a.path.style.access", "false")
         .config("spark.hadoop.fs.s3a.access.key", credentials["AccessKeyId"])
         .config("spark.hadoop.fs.s3a.secret.key", credentials["SecretAccessKey"])
         .config("spark.hadoop.fs.s3a.endpoint", f"s3.{aws_region}.amazonaws.com")
         .config("spark.hadoop.fs.s3a.connection.ssl.enabled", "true")
         .config("spark.hadoop.fs.s3a.fast.upload", "true")
         .config("spark.hadoop.fs.s3a.buffer.dir", "/tmp")
-        # AWS SDK v1 credentials provider
-        .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider")
         # Performance optimizations
         .config("spark.sql.adaptive.enabled", "true")
         .config("spark.sql.adaptive.coalescePartitions.enabled", "true")
     )
-    
+
+    # Add session token configuration if using temporary credentials
+    session_token = credentials.get("SessionToken")
+    if session_token:
+        logger.info("Using temporary credentials with session token")
+        spark_builder = (spark_builder
+            # S3A session token
+            .config("spark.hadoop.fs.s3a.session.token", session_token)
+            .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.TemporaryAWSCredentialsProvider")
+            # Iceberg S3FileIO session token
+            .config("spark.sql.catalog.glue_catalog.s3.session-token", session_token)
+        )
+    else:
+        logger.info("Using static credentials (no session token)")
+        spark_builder = spark_builder.config(
+            "spark.hadoop.fs.s3a.aws.credentials.provider",
+            "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider"
+        )
+
     try:
         spark = spark_builder.getOrCreate()
         logger.info("Spark session created successfully")
@@ -165,7 +182,7 @@ def create_spark_session(warehouse_path: str):
         raise
 
 
-@task
+@task(cache_policy=NONE)
 def create_iceberg_table_if_not_exists(spark: SparkSession, table_name: str, warehouse_path: str):
     """Create Iceberg table with optimized schema, bucketing, and bloom filters if it doesn't exist"""
     logger = get_run_logger()
@@ -334,7 +351,7 @@ def read_and_transform_data(spark: SparkSession, input_path: str):
     return df_with_timestamps
 
 
-@task
+@task(cache_policy=NONE)
 def validate_data_quality(df):
     """Perform data quality checks and add quality flags"""
     logger = get_run_logger()
@@ -377,7 +394,7 @@ def validate_data_quality(df):
     return df_validated
 
 
-@task
+@task(cache_policy=NONE)
 def deduplicate_records(df):
     """Remove duplicate records based on vehicle_id and timestamp"""
     logger = get_run_logger()
@@ -399,7 +416,7 @@ def deduplicate_records(df):
     return df_deduped
 
 
-@task
+@task(cache_policy=NONE)
 def write_to_iceberg_optimized(df, output_table: str):
     """Write to Iceberg table with optimized partitioning and bloom filters"""
     logger = get_run_logger()
@@ -428,7 +445,7 @@ def write_to_iceberg_optimized(df, output_table: str):
     return final_count
 
 
-@task
+@task(cache_policy=NONE)
 def stop_spark_session(spark: SparkSession):
     """Stop Spark session"""
     logger = get_run_logger()
