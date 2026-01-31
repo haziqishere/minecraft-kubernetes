@@ -16,6 +16,7 @@ from pyspark.sql.types import StructType, StructField, StringType, DoubleType, L
 from pyspark.sql.functions import col, to_timestamp, from_unixtime
 
 from utilities.config_utils import get_json_config
+from utilities.aws_utils import retrieve_credentials
 
 
 # Schema matching the nested JSON from Kafka producer (via Kafka Connect)
@@ -57,6 +58,8 @@ def create_spark_session(warehouse_path: str):
     logger = get_run_logger()
     logger.info("Creating Spark session with Iceberg/Glue configuration")
 
+    aws_credentials = retrieve_credentials()
+
     spark = SparkSession.builder \
         .appName("TransitIcebergIngest") \
         .config("spark.sql.extensions", "org.apache.iceberg.spark.extensions.IcebergSparkSessionExtensions") \
@@ -65,8 +68,8 @@ def create_spark_session(warehouse_path: str):
         .config("spark.sql.catalog.glue_catalog.warehouse", warehouse_path) \
         .config("spark.hadoop.fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem") \
         .config("spark.hadoop.fs.s3a.aws.credentials.provider", "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider") \
-        .config("spark.hadoop.fs.s3a.access.key", os.getenv("AWS_ACCESS_KEY_ID", "")) \
-        .config("spark.hadoop.fs.s3a.secret.key", os.getenv("AWS_SECRET_ACCESS_KEY", "")) \
+        .config("spark.hadoop.fs.s3a.access.key", aws_credentials["AWS_ACCESS_KEY_ID"]) \
+        .config("spark.hadoop.fs.s3a.secret.key", aws_credentials["AWS_SECRET_ACCESS_KEY"]) \
         .config("spark.sql.parquet.enableVectorizedReader", "true") \
         .config("spark.sql.parquet.columnarReaderBatchSize", "1024") \
         .config("spark.sql.parquet.filterPushdown", "true") \
