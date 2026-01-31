@@ -275,7 +275,8 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
     
     for i in range(hours_back):
         dt = now - timedelta(hours=i)
-        path = f"{base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
+        clean_base_path = base_path.rstrip('/')
+        path = f"{clean_base_path}/year={dt.year}/month={dt.month:02d}/day={dt.day:02d}/hour={dt.hour:02d}/"
         paths.append(path)
     
     input_path = ",".join(paths)
