@@ -262,7 +262,7 @@ def build_hourly_input_path(base_path: str, hours_back: int = 2) -> str:
     return input_path
 
 
-@task
+@task(cache_policy="NO_CACHE")
 def read_and_transform_data(spark: SparkSession, input_path: str):
     """Read JSON files from S3 and transform with flattening and timestamp conversion"""
     logger = get_run_logger()
