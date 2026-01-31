@@ -466,7 +466,6 @@ def write_to_iceberg_optimized(df, output_table: str):
         .option("write.metadata.compression-codec", "gzip") \
         .option("write.parquet.bloom-filter-enabled.column.category", "true") \
         .option("write.parquet.bloom-filter-max-bytes", "1048576") \
-        .partitionBy("start_date_dt") \
         .option("write.distribution-mode", "hash") \
         .saveAsTable(output_table)
     
