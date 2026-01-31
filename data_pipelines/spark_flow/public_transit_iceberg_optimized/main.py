@@ -436,7 +436,7 @@ def stop_spark_session(spark: SparkSession):
 
 @flow(name="public-transit-iceberg-optimized-ingest")
 def transit_iceberg_optimized_pipeline(
-    input_path: str = "s3://public-transport-dataset/raw/transit-positions/",
+    input_path: str = "s3a://public-transport-dataset/raw/transit-positions/",
     output_table: str = "glue_catalog.public_transport.vehicle_positions",
     enable_validation: bool = True,
     enable_deduplication: bool = True,

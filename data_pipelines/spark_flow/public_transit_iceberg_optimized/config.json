@@ -1,5 +1,5 @@
 {
-    "s3_raw_path": "s3://public-transport-dataset/raw/transit-positions/",
+    "s3_raw_path": "s3a://public-transport-dataset/raw/transit-positions/",
     "s3_warehouse_path": "s3a://public-transport-dataset/warehouse/",
     "iceberg_table": "glue_catalog.public_transport.vehicle_positions"
 }
