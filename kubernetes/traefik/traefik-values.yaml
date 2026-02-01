@@ -38,11 +38,18 @@ additionalArguments:
   - "--api.insecure=true"
   - "--providers.kubernetesingress.ingressendpoint.hostname=traefik.local"
 
+
 ingressRoute:
   dashboard:
     enabled: true
     entryPoints:
       - traefik
+
+providers:
+  kubernetesIngress:
+    publishedService:
+      enabled: false
+
 
 # Logs
 logs:
