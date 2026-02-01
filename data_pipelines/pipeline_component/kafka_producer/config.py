@@ -16,7 +16,7 @@ API_ENDPOINTS = {
     },
     'rapid-bus-mrtfeeder': {
         'url': 'https://api.data.gov.my/gtfs-realtime/vehicle-position/prasarana?category=rapid-bus-mrtfeeder',
-        'routes': ['T587']
+        'routes': ['T587', 'T585']
     }
 }
 
